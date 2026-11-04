@@ -31,8 +31,8 @@
 - [ ] `tools/level.py`, `storage.py`
 
 ### Phase 3. LLM·에이전트
-- [ ] `llm.py` Bedrock 클라이언트 + 용도별 모델 매핑 + 재시도·폴백
-- [ ] `prompts/` 5종
+- [ ] `llm.py` Bedrock 클라이언트 + 용도별 모델 매핑 + 재시도·폴백 + 트레이스 메타데이터 전달 + pre/post 훅 자리 (SERVICE §13)
+- [ ] `prompts/` 5종 (id/version 헤더 포함)
 - [ ] `agents/` survey, interviewer, scorer, feedback
 
 ### Phase 4. 그래프
@@ -45,6 +45,12 @@
 - [ ] 실제 Bedrock으로 E2E 확인 (PRD 성공 기준 1~9)
 - [ ] CLAUDE.md 실행·테스트 명령 갱신
 
+### Phase 6. 트레이스·가드레일 (SERVICE §13)
+- [ ] 트레이스 저장 방식 결정 (로컬 JSONL / 외부 도구, 외부 도구는 사용자 승인 필요) 및 after_call 훅 구현
+- [ ] 출력 가드레일 post 훅 (언어 검사, 번역 누락, 주제 이탈)
+- [ ] Bedrock Guardrails 적용 여부 결정 및 guardrail_config 연결
+- [ ] PRD §6 비기능 요구사항에 트레이스·가드레일 항목 반영
+
 ## 작업 로그
 | 날짜 | 작업 | 결과 | 다음 할 일 |
 |------|------|------|-----------|
@@ -56,3 +62,4 @@
 | 2026-11-04 | PRD 재검토·보완 | 등급 상한(출제 레벨+1), 선택형 설문, 조정 폭 1단계, F-09 P0, 일관성 표현 수정, 최소 답변 길이, 미완료 세션 미저장. SERVICE.md 동기화 | Phase 1 스캐폴딩 |
 | 2026-11-04 | SERVICE.md 재검토·보완 | 피드백 HITL 추가, State 필드 보강, guard 규칙 13개 재정의, 파이썬 순환 주제 배정, 데이터 스키마, 로깅, 인젝션 방지, 모델 Sonnet 4.5→Haiku 4.5(global) | Phase 1 스캐폴딩 |
 | 2026-11-04 | opic_survey.md 작성 | 링커리어 2026 서베이 글 기반 6주제(프로필 2: 단일 선택, topic 4), ★ 추천 표시, 12개 규칙은 안내만. PRD F-01·SERVICE §3/§4/§10 동기화 | Phase 1 스캐폴딩 |
+| 2026-11-04 | 트레이스·가드레일 확장 지점 설계 | SERVICE §13 추가(단일 진입점, 메타데이터, 프롬프트 버전, pre/post 훅), Phase 6 백로그 신설 | Phase 1 스캐폴딩 |

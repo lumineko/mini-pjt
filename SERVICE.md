@@ -70,7 +70,7 @@ flowchart TD
 | `src/opic/rules/validation.py` | `validate_answer(text, min_words)` (순수 함수) | data/rubric.json |
 | `src/opic/rules/summary.py` | 세션 요약 계산 (순수 함수) | rules.scoring |
 | `src/opic/storage.py` | 세션 JSON 저장, 목록, 조회 | data/history/ |
-| `src/opic/llm.py` | Bedrock 클라이언트, 재시도·폴백 체인, 구조화 출력, 호출 로깅 | langchain-aws, config |
+| `src/opic/llm.py` | **모든 LLM 호출의 단일 진입점** (에이전트·슈퍼바이저는 Bedrock을 직접 호출하지 않음). Bedrock 클라이언트, 재시도·폴백 체인, 구조화 출력, 호출 로깅, 트레이스 메타데이터 전달, pre/post 훅 (§13) | langchain-aws, config |
 | `src/opic/config.py` | `.env` 로드, 경로·설정, logging 설정 | python-dotenv |
 | `src/opic/prompts/*.md` | 에이전트별 시스템 프롬프트 | - |
 
@@ -351,3 +351,26 @@ mini-pjt/
 | 성공 기준 2·7·8 | tests/test_scoring, test_difficulty, test_korean |
 | 성공 기준 1·3·6·9 | tests/test_graph_flow, test_survey |
 | 성공 기준 4 | llm.py 폴백 단위 테스트 (fake 예외 주입) |
+
+## 13. 트레이스·가드레일 확장 지점
+트레이스 저장과 추가 가드레일의 **본체는 나중에(TASK Phase 6) 붙인다**. 그때 에이전트 코드를 고치지 않도록, 아래 연결 지점은 처음 구현할 때부터 넣는다.
+
+| # | 연결 지점 | 구현 시 규칙 |
+|---|-----------|--------------|
+| 1 | 단일 진입점 | 모든 LLM 호출은 `llm.py`(`get_model(role)` → `invoke_llm(...)`)를 거친다. 다른 모듈에서 `ChatBedrockConverse`나 boto3로 직접 호출하지 않는다. |
+| 2 | 호출 메타데이터 | 호출마다 RunnableConfig `metadata`/`tags`에 `session_id`, `node`, `item_index`, `prompt_id@version`, `role`을 넣는다. 그래프 실행 config(`thread_id=session_id`)에서 이어받는다. |
+| 3 | 프롬프트 버전 | `prompts/*.md` 맨 위에 `id`, `version` 헤더를 둔다. 프롬프트를 바꾸면 version을 올린다. 로더가 헤더를 읽어 메타데이터 2번에 넣는다. |
+| 4 | pre/post 훅 | `llm.py`에 `before_call(role, messages, metadata)`와 `after_call(role, output, metadata)` 훅 목록을 둔다. 처음에는 비어 있다(동작 없음). 가드레일과 트레이스 기록기는 여기에 등록한다. |
+
+**이미 있는 가드레일** (유지): guard_router 허용 목록·override, 답변 `<answer>` 격리(§3 보안), Pydantic 점수 범위 검증, 등급·감점·난이도 파이썬 판정, 최소 답변 길이 검증, 로깅(§11).
+
+**나중에 추가할 후보** (Phase 6에서 결정)
+- 트레이스 저장:
+  - 로컬 JSONL(`logs/traces.jsonl`, 새 라이브러리 없음)
+  - 또는 LangSmith/Langfuse 같은 외부 도구. 새 라이브러리와 외부 서비스가 필요하므로 **사용자 승인 필요**
+- Bedrock Guardrails: `ChatBedrockConverse`의 `guardrail_config`로 붙인다. 새 라이브러리는 없고, AWS 콘솔에서 Guardrail을 따로 만들어야 한다.
+- 출력 검사(post 훅):
+  - 교정·대체 문장이 영어인지, 피드백 설명이 한국어인지
+  - 한글 구간이 있는데 번역이 빠지지 않았는지
+  - 질문이 배정된 주제를 지키는지
+- 그때 결정할 것: 사용할 도구, 저장 범위(답변 원문 포함 여부), 보존 기간. 결정되면 PRD §6 비기능 요구사항에 추가한다.
