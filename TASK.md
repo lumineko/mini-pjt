@@ -27,7 +27,7 @@
 - [ ] `rules/difficulty.py` + `tests/test_difficulty.py` (AL/IL 경계 포함)
 - [ ] `rules/topic.py` + `tests/test_topic.py`, `rules/validation.py` + `tests/test_validation.py`
 - [ ] `rules/summary.py`
-- [ ] `tools/survey.py` + `tests/test_survey.py` (파싱, fallback 조건)
+- [ ] `tools/survey.py` + `tests/test_survey.py` (파싱, [프로필]/★/안내문 처리, fallback 조건)
 - [ ] `tools/level.py`, `storage.py`
 
 ### Phase 3. LLM·에이전트
@@ -55,3 +55,4 @@
 | 2026-11-04 | SERVICE.md 작성 + 백로그 구체화 | 멀티 에이전트(LLM 슈퍼바이저 + Py guard), 에이전트 4종, HITL 3곳, 세션별 JSON, 라이브러리 승인 | Phase 1 스캐폴딩 |
 | 2026-11-04 | PRD 재검토·보완 | 등급 상한(출제 레벨+1), 선택형 설문, 조정 폭 1단계, F-09 P0, 일관성 표현 수정, 최소 답변 길이, 미완료 세션 미저장. SERVICE.md 동기화 | Phase 1 스캐폴딩 |
 | 2026-11-04 | SERVICE.md 재검토·보완 | 피드백 HITL 추가, State 필드 보강, guard 규칙 13개 재정의, 파이썬 순환 주제 배정, 데이터 스키마, 로깅, 인젝션 방지, 모델 Sonnet 4.5→Haiku 4.5(global) | Phase 1 스캐폴딩 |
+| 2026-11-04 | opic_survey.md 작성 | 링커리어 2026 서베이 글 기반 6주제(프로필 2: 단일 선택, topic 4), ★ 추천 표시, 12개 규칙은 안내만. PRD F-01·SERVICE §3/§4/§10 동기화 | Phase 1 스캐폴딩 |

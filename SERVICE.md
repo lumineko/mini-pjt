@@ -66,7 +66,7 @@ flowchart TD
 | `src/opic/tools/level.py` | `get_level_guide(level)`, `get_previous_questions(state)` | data/levels.json |
 | `src/opic/rules/scoring.py` | 가중 합산, 한글 감점, 등급 구간, IL 미달, 출제 레벨+1 상한, 목표 달성 여부, 등급 순서값 평균 (순수 함수) | data/rubric.json |
 | `src/opic/rules/difficulty.py` | 3문항 평균 등급과 목표 비교, 한 단계 조정 제안, AL·IL 경계 (순수 함수) | data/levels.json |
-| `src/opic/rules/topic.py` | `assign_topics(survey_items, survey_answers, n=5)` 순환 배정 (순수 함수) | - |
+| `src/opic/rules/topic.py` | `assign_topics(survey_items, survey_answers, n=5)`. `kind=topic` 문항의 선택만 설문 순서대로 펼쳐 순환 배정 (순수 함수) | - |
 | `src/opic/rules/validation.py` | `validate_answer(text, min_words)` (순수 함수) | data/rubric.json |
 | `src/opic/rules/summary.py` | 세션 요약 계산 (순수 함수) | rules.scoring |
 | `src/opic/storage.py` | 세션 JSON 저장, 목록, 조회 | data/history/ |
@@ -82,9 +82,10 @@ flowchart TD
 | session_id | str | 세션 ID (= checkpointer thread_id) |
 | started_at | str | ISO 시각 |
 | survey_source | `"file" \| "fallback"` | 설문 출처 |
-| survey_items | list[SurveyItem] | 선택형 문항 (`id`, `topic`, `question`, `options`) |
-| survey_answers | dict[str, list[str]] | 문항 id별 선택한 보기 (1개 이상) |
-| topic_plan | list[str] | 문항 1~5에 배정된 주제 (`rules.topic`) |
+| survey_notice | str \| None | 설문 상단 안내문 (파일의 `>` 줄) |
+| survey_items | list[SurveyItem] | 선택형 문항 (`id`, `topic`, `kind: "profile"\|"topic"`, `question`, `options: [{label, recommend(0~3)}]`) |
+| survey_answers | dict[str, list[str]] | 문항 id별 선택한 보기 (profile은 정확히 1개, topic은 1개 이상) |
+| topic_plan | list[str] | 문항 1~5에 배정된 주제 (`rules.topic`, topic 문항 선택만 사용) |
 | initial_level / current_level | Level | `IL \| IM \| IH \| AL` |
 | level_history | list[LevelChange] | `after_item`, `from`, `to` |
 | current_question | str \| None | 출제된 현재 질문 |
@@ -108,8 +109,8 @@ flowchart TD
 | guard_router | Python | state | allowed_next. 1개면 바로 goto, 2개면 supervisor |
 | supervisor | LLM (구조화 출력 `{next, reason}`) | state 요약, allowed_next | next → 검증 후 goto (밖이면 allowed_next[0]) |
 | survey_agent | **Python 분기 + LLM(fallback 시에만)** | opic_survey.md | 파일 파싱 결과가 있으면 그대로 쓰고(LLM 호출 없음), 없으면 `pick_default_topic()` 후 LLM이 선택형 설문 1개 생성. survey_source, survey_items |
-| ask_survey_and_level | HITL `interrupt(kind=survey)` + Python | survey_items | survey_answers, initial_level, current_level, **topic_plan**(`assign_topics`) |
-| interviewer_agent | LLM + tools (`get_level_guide`, `get_previous_questions`) | `topic_plan[len(items)]`, current_level, 이전 질문 | current_question (배정 주제로만) |
+| ask_survey_and_level | HITL `interrupt(kind=survey)` + Python | survey_items, survey_notice | 선택 개수 검증(profile=1, topic≥1, 실패 시 다시 interrupt) 후 survey_answers, initial_level, current_level, **topic_plan**(`assign_topics`) |
+| interviewer_agent | LLM + tools (`get_level_guide`, `get_previous_questions`) | `topic_plan[len(items)]`, profile 응답(배경 정보), current_level, 이전 질문 | current_question (배정 주제로만, profile은 맥락으로만 반영) |
 | await_answer | HITL `interrupt(kind=answer)` + Python | current_question | `validate_answer` 통과 시 current_answer와 pending(`detect_korean` 결과)을 만들고 answer_error=None. 실패 시 answer_error만 설정(guard가 다시 이 노드로 보냄) |
 | scorer_agent | LLM (구조화 출력, temperature 0) | question, answer, 출제 레벨, 루브릭 정의 | pending.rubric_scores (항목별 1~5, Pydantic 검증) |
 | feedback_agent | LLM + tool (`detect_korean`, 번역 구간 확인용) | question, answer, pending.korean_spans | pending.feedback: corrections(없으면 빈 목록 → UI에 "교정 사항 없음"), alternatives(1개 이상), translation(한글 구간이 있을 때) |
@@ -171,7 +172,7 @@ HTTP API는 없다. Streamlit이 같은 프로세스 안에서 함수를 호출�
 
 | interrupt kind | UI 표시 | resume 값 |
 |----------------|---------|-----------|
-| `survey` | 문항별 체크박스 + 레벨 선택 | `{answers: {id: [보기]}, level}` |
+| `survey` | 안내문, profile 문항은 라디오·topic 문항은 체크박스, 추천 보기 옆 ★ 표시(미리 선택 안 함), 레벨 선택 | `{answers: {id: [보기]}, level}` |
 | `answer` | 질문, 입력창, (answer_error가 있으면) 오류 안내 | 답변 텍스트 |
 | `feedback` | 항목별 점수, 등급, 달성 여부, 교정(없으면 "교정 사항 없음"), 대체 문장, 번역·감점 내역, "다음 문제"/"결과 보기" 버튼 | `True` |
 | `adjust` | 3문항 평균 등급, 제안 레벨, 예/아니오 | `bool` |
@@ -263,14 +264,23 @@ mini-pjt/
 ## 10. 데이터 파일 스키마
 값은 초안이며, 구현 중이나 구현 후에 조정한다.
 
-**`opic_survey.md`**
+**`opic_survey.md`** (작성 완료, 링커리어 2026 서베이 정리 글 기반, 비공식)
 ```markdown
-## 여가활동
-- 여가 시간에 주로 무엇을 하나요?: 영화 보기 | 공원 가기 | 카페 가기
+<!-- 출처 주석 -->
+> 실제 시험에서는 ... 12개 이상을 선택해야 합니다. 이 연습에서는 문항마다 1개 이상이면 됩니다.
+
+## [프로필] 거주지
+- 현재 어디에 살고 있나요?: 개인 주택이나 아파트에 홀로 거주★ | 가족과 함께 거주 | ...
 ## 취미/관심사
-- 어떤 취미가 있나요?: 음악 감상 | 요리 | 독서
+- 어떤 취미나 관심사가 있나요?: 음악 감상하기★★★ | 독서★★ | 그림 그리기 | ...
 ```
-- 파싱 규칙: `## 주제` 아래 `- 질문: 보기 | 보기` 형식만 받는다. `:` 뒤에 보기가 없거나 형식이 틀린 줄은 건너뛴다.
+- 파싱 규칙:
+  - `## 주제` 아래 `- 질문: 보기 | 보기`. 질문과 보기는 첫 번째 `": "`로 나눈다.
+  - `## [프로필] X`는 `kind=profile`(단일 선택, 주제 배정 제외), 나머지는 `kind=topic`이다.
+  - 보기 끝의 `★` 개수를 `recommend`(0~3)로 저장하고, label에서는 ★를 뗀다.
+  - `>`로 시작하는 줄은 `survey_notice`로 쓴다. `<!-- -->` 주석과 `#` 제목은 무시한다.
+  - 보기가 없거나 형식이 틀린 줄은 건너뛴다. topic 문항이 0개면 fallback으로 넘어간다.
+- 현재 구성: 프로필 2주제(직업 3문항, 거주지 1문항), topic 4주제(여가 8, 취미 10, 운동 32, 휴가/출장 5개 보기)
 
 **`data/default_topics.json`**
 ```json
