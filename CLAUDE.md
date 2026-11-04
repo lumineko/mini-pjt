@@ -14,6 +14,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `PRD.md` — 기능 목표, 사용자 시나리오, 요구사항, 범위 (무엇을)
 - `SERVICE.md` — 모듈 구성, LangGraph 그래프, API, 데이터 흐름, 외부 연동, 모델 폴백 전략 (어떻게)
 - `TASK.md` — 작업 체크리스트와 작업 로그. 세션 시작 시 "현재 진행 중"과 마지막 로그를 먼저 확인하고, 작업 완료 시 체크 및 로그를 갱신한다.
+- `opic_survey.md` — 설문 원본 데이터 (링커리어 2026 정리 글 기반, 비공식). 형식은 SERVICE.md §10
+- `evals/` — 실제 모델로 채점 품질을 재는 평가 세트·스크립트 (SERVICE.md §14.2, 수동 실행)
 
 # 개발 명령어 / 코드 구조
 아직 코드가 없다. 프로젝트 스캐폴딩 후 실행·테스트 명령과 구조를 여기에 추가한다.
@@ -22,3 +24,4 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `src/opic/` — `app.py`(Streamlit), `graph.py`, `supervisor.py`(LLM 슈퍼바이저 + Python guard), `agents/`, `tools/`, `rules/`(순수 함수 판정 로직), `llm.py`(Bedrock 폴백)
 - `data/` — `levels.json`, `rubric.json`, `default_topics.json`, `history/`(세션 JSON)
 - 판정 로직(`rules/`)은 LLM 없이 단위 테스트 가능해야 한다.
+- `.env`, `data/history/`, `logs/`, `evals/results/`는 커밋하지 않는다(`.gitignore`).

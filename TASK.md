@@ -16,7 +16,7 @@
 - [x] 작업 분할 후 이 백로그 구체화
 
 ### Phase 1. 프로젝트 스캐폴딩
-- [ ] 디렉터리 구조 + `requirements.txt` (streamlit, langgraph, langchain-aws, python-dotenv, pytest — 승인됨)
+- [ ] 디렉터리 구조 + `.gitignore`(.env, data/history/, logs/, evals/results/, __pycache__/, .venv/) + `requirements.txt` (streamlit, langgraph, langchain-aws, python-dotenv, pytest — 승인됨) + 가상환경 설치 확인 (Python 3.14, 비호환 시 3.12)
 - [ ] `.env.example` + `config.py` 설정 로더
 - [ ] 데이터 초안: `data/default_topics.json`, `data/levels.json`, `data/rubric.json`
 - [ ] `state.py` 타입 정의
@@ -26,9 +26,9 @@
 - [ ] `tools/korean.py` + `tests/test_korean.py`
 - [ ] `rules/difficulty.py` + `tests/test_difficulty.py` (AL/IL 경계 포함)
 - [ ] `rules/topic.py` + `tests/test_topic.py`, `rules/validation.py` + `tests/test_validation.py`
-- [ ] `rules/summary.py`
+- [ ] `rules/summary.py` + `tests/test_summary.py`
 - [ ] `tools/survey.py` + `tests/test_survey.py` (파싱, [프로필]/★/안내문 처리, fallback 조건)
-- [ ] `tools/level.py`, `storage.py`
+- [ ] `tools/level.py` + `tests/test_level.py`, `storage.py` + `tests/test_storage.py`
 
 > 테스트 규칙 (SERVICE §14): 각 태스크는 대응 테스트 통과가 완료 조건이다. 공용 테스트 데이터는 `tests/fixtures/`에 한 번 만들어 재사용한다.
 
@@ -72,3 +72,4 @@
 | 2026-11-04 | opic_survey.md 작성 | 링커리어 2026 서베이 글 기반 6주제(프로필 2: 단일 선택, topic 4), ★ 추천 표시, 12개 규칙은 안내만. PRD F-01·SERVICE §3/§4/§10 동기화 | Phase 1 스캐폴딩 |
 | 2026-11-04 | 트레이스·가드레일 확장 지점 설계 | SERVICE §13 추가(단일 진입점, 메타데이터, 프롬프트 버전, pre/post 훅), Phase 6 백로그 신설 | Phase 1 스캐폴딩 |
 | 2026-11-04 | 테스트·평가 전략 반영 | SERVICE §14(태스크별 pytest, scorer 평가 세트·지표), 디렉터리 구조에 evals/ 추가, TASK Phase 2.5 신설·Phase 3 테스트 보강 | Phase 1 스캐폴딩 |
+| 2026-11-04 | 4개 문서 통합 재검토 | 대체 설문 직업·거주지는 topic으로 처리, scorer는 영어 부분만 평가(이중 감점 방지), 질문 유형은 LLM이 레벨 후보 안에서 선택, PRD 성공 기준 10(채점 품질) 추가, .gitignore·누락 테스트·Python 버전·pydantic 명시, CLAUDE.md 문서 구조 보강 | Phase 1 스캐폴딩 |
