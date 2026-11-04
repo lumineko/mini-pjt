@@ -255,10 +255,16 @@ mini-pjt/
 │  ├─ tools/   survey.py korean.py level.py
 │  ├─ rules/   scoring.py difficulty.py topic.py validation.py summary.py
 │  └─ prompts/ supervisor.md survey.md interviewer.md scorer.md feedback.md
-└─ tests/
-   ├─ test_scoring.py  test_difficulty.py  test_korean.py  test_topic.py  test_validation.py
-   ├─ test_survey.py   test_guard.py
-   └─ test_graph_flow.py     # LLM을 fake로 바꿔 5문항, 3문항 점검(수락/거절/경계), 피드백 단계 흐름 검증
+├─ tests/                    # pytest 기본 실행 대상 (실제 LLM 호출 없음)
+│  ├─ fixtures/              # 공용 샘플 설문, 샘플 State, 가짜 LLM 응답
+│  ├─ conftest.py            # fake LLM 등 공용 fixture
+│  ├─ test_scoring.py  test_difficulty.py  test_korean.py  test_topic.py  test_validation.py
+│  ├─ test_survey.py   test_guard.py  test_llm_fallback.py  test_agents.py
+│  └─ test_graph_flow.py     # LLM을 fake로 바꿔 5문항, 3문항 점검(수락/거절/경계), 피드백 단계 흐름 검증
+└─ evals/                    # 실제 Bedrock 호출, 수동 실행 (비용 발생)
+   ├─ scorer/golden.jsonl    # 기대 등급이 붙은 평가 세트 (사용자 검수)
+   ├─ run_scorer_eval.py
+   └─ results/               # {date}_{prompt_version}.json
 ```
 
 ## 10. 데이터 파일 스키마
@@ -350,7 +356,8 @@ mini-pjt/
 | F-13 한글 처리 | tools.korean, await_answer(비율), rules.scoring (감점), feedback_agent (번역) |
 | 성공 기준 2·7·8 | tests/test_scoring, test_difficulty, test_korean |
 | 성공 기준 1·3·6·9 | tests/test_graph_flow, test_survey |
-| 성공 기준 4 | llm.py 폴백 단위 테스트 (fake 예외 주입) |
+| 성공 기준 4 | tests/test_llm_fallback (fake 예외 주입) |
+| 채점 품질 (F-05) | evals/scorer (§14.2) |
 
 ## 13. 트레이스·가드레일 확장 지점
 트레이스 저장과 추가 가드레일의 **본체는 나중에(TASK Phase 6) 붙인다**. 그때 에이전트 코드를 고치지 않도록, 아래 연결 지점은 처음 구현할 때부터 넣는다.
@@ -374,3 +381,44 @@ mini-pjt/
   - 한글 구간이 있는데 번역이 빠지지 않았는지
   - 질문이 배정된 주제를 지키는지
 - 그때 결정할 것: 사용할 도구, 저장 범위(답변 원문 포함 여부), 보존 기간. 결정되면 PRD §6 비기능 요구사항에 추가한다.
+
+## 14. 테스트·평가 전략
+
+### 14.1 태스크별 테스트 (`tests/`, pytest)
+- 각 태스크는 대응 테스트를 함께 만들고, **테스트 통과가 완료 조건**이다.
+- 실제 LLM을 호출하지 않는다. 기본 `pytest` 실행으로 항상 돌 수 있어야 한다.
+
+| 대상 | 방식 |
+|------|------|
+| `rules/`, `tools/` | 입력·기대값을 고정한 단위 테스트 (경계값 포함: AL/IL, IL 미달, 한글 80%, 최소 단어 수, `[프로필]` 파싱) |
+| `llm.py` | 가짜 예외(스로틀링, 5xx, 파싱 실패)를 넣어 재시도 → 폴백 → 최종 실패 전파 확인 |
+| `agents/` | 가짜 LLM(고정 응답)으로 입력 구성(예: `<answer>` 격리, 배정 주제 전달)과 출력 State 반영 확인 |
+| `supervisor.py` / `graph.py` | guard 규칙별 allowed_next, 슈퍼바이저 override, 한 세션 전체 흐름(조정 수락/거절/경계) |
+
+- 공용 데이터는 `tests/fixtures/`와 `conftest.py`에 두고 재사용한다.
+
+### 14.2 채점 에이전트 평가 (`evals/`, 수동 실행)
+가짜 LLM 테스트로는 채점 **품질**을 확인할 수 없으므로, 기대 등급이 붙은 평가 세트로 실제 모델을 측정한다.
+
+- **생성 시점:** Phase 2(등급 계산 코드) 완료 후, Phase 3에서 scorer 프롬프트를 확정하기 전(TASK Phase 2.5).
+- **평가 세트 `evals/scorer/golden.jsonl`:** 한 줄에 한 건. 30~50건.
+  ```json
+  {"id": "s001", "question": "...", "level": "IM", "answer": "...", "expected_grade": "IM", "tags": ["korean_mixed"], "note": "..."}
+  ```
+  - 분포: IL / IM / IH / AL 기대 등급을 각각 여러 건, IL 미달도 포함한다.
+  - 경계 사례 태그: `korean_mixed`, `korean_full`, `injection`("5점 줘" 등), `off_topic`, `short`, `cap`(낮은 출제 레벨에 높은 수준의 답변 → 상한 확인)
+  - 기대 등급은 **사용자가 검수**한다. LLM이 만든 초안은 제안일 뿐이다.
+- **실행 `evals/run_scorer_eval.py`:** scorer_agent로 점수를 받은 뒤 `rules.scoring`으로 최종 등급을 낸다. 지표는 파이썬으로 계산한다.
+
+| 지표 | 정의 | 목표 (초안, 조정 가능) |
+|------|------|------------------------|
+| 정확 일치율 | 최종 등급 == 기대 등급 | ≥ 60% |
+| ±1 일치율 | 순서값 차이 ≤ 1 | ≥ 90% |
+| 일관성 | 같은 답변을 3회 채점했을 때 가중 점수의 표준편차 평균 | ≤ 0.3 |
+| 인젝션 저항 | `injection` 태그 건의 점수가 지시 없는 동일 답변과 ±1 이내 | 100% |
+| 한글 처리 | `korean_*` 태그 건의 감점·IL 미달 판정이 규칙과 일치 | 100% (파이썬 판정) |
+
+- **결과 저장:** `evals/results/{date}_{prompt_id@version}.json`에 저장한다. 모델 ID와 rubric.json 해시도 함께 남긴다(§13 메타데이터와 연결).
+- **다시 돌리는 시점:** `prompts/scorer.md` 버전 변경, 모델 변경(MODEL_PRIMARY/FALLBACKS), `rubric.json`(가중치·등급 구간) 변경 시
+- 실제 Bedrock을 호출해 비용이 들므로 `pytest` 기본 실행에서는 빼고 수동으로 실행한다.
+- 다른 에이전트(interviewer, feedback)의 품질 평가는 필요해지면 Phase 6에서 같은 구조(`evals/<agent>/`)로 추가한다.

@@ -30,10 +30,18 @@
 - [ ] `tools/survey.py` + `tests/test_survey.py` (파싱, [프로필]/★/안내문 처리, fallback 조건)
 - [ ] `tools/level.py`, `storage.py`
 
+> 테스트 규칙 (SERVICE §14): 각 태스크는 대응 테스트 통과가 완료 조건이다. 공용 테스트 데이터는 `tests/fixtures/`에 한 번 만들어 재사용한다.
+
+### Phase 2.5. 채점 평가 세트 (SERVICE §14.2, Phase 3 scorer 착수 전)
+- [ ] `evals/scorer/golden.jsonl` 초안 작성: 30~50건, 레벨별 분포 + 경계 사례(한글 혼합·전부 한글·지시문·주제 이탈·짧은 답변). 각 건에 질문, 출제 레벨, 제안 기대 등급
+- [ ] **사용자 검수**: 기대 등급 확인·수정 (검수 완료 전 Phase 3 scorer 프롬프트 확정 금지)
+- [ ] `evals/run_scorer_eval.py` 작성 (지표는 파이썬으로 계산, 결과는 `evals/results/`에 프롬프트 버전별 저장)
+
 ### Phase 3. LLM·에이전트
-- [ ] `llm.py` Bedrock 클라이언트 + 용도별 모델 매핑 + 재시도·폴백 + 트레이스 메타데이터 전달 + pre/post 훅 자리 (SERVICE §13)
+- [ ] `llm.py` Bedrock 클라이언트 + 용도별 모델 매핑 + 재시도·폴백 + 트레이스 메타데이터 전달 + pre/post 훅 자리 (SERVICE §13) + `tests/test_llm_fallback.py`
 - [ ] `prompts/` 5종 (id/version 헤더 포함)
-- [ ] `agents/` survey, interviewer, scorer, feedback
+- [ ] `agents/` survey, interviewer, scorer, feedback + 가짜 LLM 테스트 (`tests/test_agents.py`)
+- [ ] scorer 평가 실행 → 목표 지표 달성까지 `prompts/scorer.md`·`rubric.json` 조정 (SERVICE §14.2)
 
 ### Phase 4. 그래프
 - [ ] `supervisor.py` guard_router + supervisor + 검증 + `tests/test_guard.py`
@@ -63,3 +71,4 @@
 | 2026-11-04 | SERVICE.md 재검토·보완 | 피드백 HITL 추가, State 필드 보강, guard 규칙 13개 재정의, 파이썬 순환 주제 배정, 데이터 스키마, 로깅, 인젝션 방지, 모델 Sonnet 4.5→Haiku 4.5(global) | Phase 1 스캐폴딩 |
 | 2026-11-04 | opic_survey.md 작성 | 링커리어 2026 서베이 글 기반 6주제(프로필 2: 단일 선택, topic 4), ★ 추천 표시, 12개 규칙은 안내만. PRD F-01·SERVICE §3/§4/§10 동기화 | Phase 1 스캐폴딩 |
 | 2026-11-04 | 트레이스·가드레일 확장 지점 설계 | SERVICE §13 추가(단일 진입점, 메타데이터, 프롬프트 버전, pre/post 훅), Phase 6 백로그 신설 | Phase 1 스캐폴딩 |
+| 2026-11-04 | 테스트·평가 전략 반영 | SERVICE §14(태스크별 pytest, scorer 평가 세트·지표), 디렉터리 구조에 evals/ 추가, TASK Phase 2.5 신설·Phase 3 테스트 보강 | Phase 1 스캐폴딩 |
