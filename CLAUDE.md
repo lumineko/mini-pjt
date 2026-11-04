@@ -18,7 +18,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `evals/` — 실제 모델로 채점 품질을 재는 평가 세트·스크립트 (SERVICE.md §14.2, 수동 실행)
 
 # 개발 명령어 / 코드 구조
-아직 코드가 없다. 프로젝트 스캐폴딩 후 실행·테스트 명령과 구조를 여기에 추가한다.
+스캐폴딩 완료 (Phase 1). 실행 명령은 Phase 5에서 `app.py` 완성 후 추가한다.
+
+- 가상환경 생성·설치 (Python 3.14): `python -m venv .venv` → `.venv\Scripts\python -m pip install -r requirements.txt`
+- 테스트: `.venv\Scripts\python -m pytest -q` (`pytest.ini`: `testpaths=tests`, `pythonpath=src`, 실제 LLM 호출 없음)
+- 테스트 하나만: `.venv\Scripts\python -m pytest tests/test_smoke.py::test_langgraph_apis -q`
+- 평가(`evals/`)는 실제 Bedrock을 호출하므로 pytest와 별도로 수동 실행한다.
 
 예정 구조 (상세는 SERVICE.md §2, §9):
 - `src/opic/` — `app.py`(Streamlit), `graph.py`, `supervisor.py`(LLM 슈퍼바이저 + Python guard), `agents/`, `tools/`, `rules/`(순수 함수 판정 로직), `llm.py`(Bedrock 폴백)

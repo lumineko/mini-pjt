@@ -1,0 +1,7 @@
+# 승인된 라이브러리 (2026-11-04, PRD §6). Python 3.14에서 설치·검증됨 (2026-11-04)
+# pydantic은 langchain-core 의존성으로 함께 설치된다.
+streamlit~=1.66
+langgraph~=1.2
+langchain-aws~=1.9
+python-dotenv~=1.2
+pytest~=9.2
