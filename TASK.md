@@ -28,7 +28,7 @@
 - [x] `rules/topic.py` + `tests/test_topic.py`, `rules/validation.py` + `tests/test_validation.py`
 - [x] `rules/summary.py` + `tests/test_summary.py`
 - [x] `tools/survey.py` + `tests/test_survey.py` (파싱, [프로필]/★/안내문 처리, fallback 조건)
-- [ ] `tools/level.py` + `tests/test_level.py`, `storage.py` + `tests/test_storage.py`
+- [x] `tools/level.py` + `tests/test_level.py`, `storage.py` + `tests/test_storage.py`
 
 > 테스트 규칙 (SERVICE §14): 각 태스크는 대응 테스트 통과가 완료 조건이다. 공용 테스트 데이터는 `tests/fixtures/`에 한 번 만들어 재사용한다.
 
@@ -84,3 +84,4 @@
 | 2026-11-05 | Phase 2: `rules/topic.py` + `rules/validation.py` | 주제 배정 **주제별 번갈아** 확정(설문 순서, 안 쓴 보기 우선, 다 쓴 뒤에만 반복, profile 제외). 검증: 답변(빈 값·최소 단어), 레벨, 설문 응답(profile 1·topic ≥1·보기 값·중복). 공용 샘플 `tests/fixtures/survey_items.py`. SERVICE §2 반영. 테스트 43개 추가, 전체 193개 통과 | `rules/summary.py` |
 | 2026-11-05 | Phase 2: `rules/summary.py` | `summarize`: 문항별 등급, 평균 등급(scoring.average_grade), 시작·최종 레벨(이력 마지막 to), 변경 여부. 5문항·이력 연속성 검증. `SESSION_ITEMS`를 state.py 공용 상수로 이동. SERVICE §2 반영. 테스트 10개 추가, 전체 203개 통과 | `tools/survey.py` |
 | 2026-11-05 | Phase 2: `tools/survey.py` | `parse_survey`(첫 ": " 분리, [프로필] → profile, ★ → recommend 최대 3, 여러 줄 안내문, 주석·제목 무시, 빈·중복 보기 제거, id `{주제}-{순번}`), `load_survey_file`(없음·읽기 실패·topic 0개 → None), `pick_default_topic`(rng 주입). 실제 opic_survey.md 8문항 파싱 확인. SERVICE §2·§10 반영. 테스트 20개 추가, 전체 223개 통과 | `tools/level.py` + `storage.py` |
+| 2026-11-05 | Phase 2: `tools/level.py` + `storage.py` (Phase 2 완료) | level: 레벨별 유형·guide 조회(order 검증, 사본 반환), 완료 문항 기반 이전 질문 목록. storage: 완료 세션만 저장(5문항+요약), 진행용 필드 제외, 임시 파일 후 교체, session_id 경로 조작 차단, 최신순 목록·깨진 파일 건너뜀. 공용 `tests/fixtures/sessions.py`. SERVICE §2 반영. 테스트 31개 추가, 전체 254개 통과 | Phase 2.5 채점 평가 세트 초안 |
