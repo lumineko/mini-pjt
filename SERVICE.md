@@ -55,7 +55,7 @@ flowchart TD
 | `src/opic/agents/interviewer.py` | Interviewer Agent (배정된 주제 + 레벨로 질문 1개) | tools.level, llm |
 | `src/opic/agents/scorer.py` | Scorer Agent (루브릭 항목 점수만) | llm, data/rubric.json |
 | `src/opic/agents/feedback.py` | Feedback Agent (교정, 대체 문장, 한글 구간 번역) | tools.korean, llm |
-| `src/opic/tools/survey.py` | `load_survey_file()`, `pick_default_topic()` | opic_survey.md, data/default_topics.json |
+| `src/opic/tools/survey.py` | `parse_survey(text)`, `load_survey_file(path)` → `{items, notice}` 또는 None(fallback), `pick_default_topic(rng)` | opic_survey.md, data/default_topics.json |
 | `src/opic/tools/korean.py` | `detect_korean(text)` → `{ratio, spans, korean_words, total_words}`, `count_words(text)`. 비율 = 한글이 들어간 단어 / 전체 단어(글자가 있는 공백 단위 덩어리). spans는 연속 한글 묶음(영문 글자 없이 공백·문장부호·숫자만 사이에 있으면 합침) | state |
 | `src/opic/tools/level.py` | `get_level_guide(level)`, `get_previous_questions(state)` | data/levels.json |
 | `src/opic/rules/scoring.py` | 가중 합산, 한글 감점, 등급 구간, IL 미달, 출제 레벨+1 상한, 목표 달성 여부, 등급 순서값 평균 (순수 함수) | data/rubric.json |
@@ -290,7 +290,10 @@ mini-pjt/
   - `## [프로필] X`는 `kind=profile`(단일 선택, 주제 배정 제외), 나머지는 `kind=topic`이다.
   - 보기 끝의 `★` 개수를 `recommend`(0~3)로 저장하고, label에서는 ★를 뗀다.
   - `>`로 시작하는 줄은 `survey_notice`로 쓴다. `<!-- -->` 주석과 `#` 제목은 무시한다.
-  - 보기가 없거나 형식이 틀린 줄은 건너뛴다. topic 문항이 0개면 fallback으로 넘어간다.
+  - 보기가 없거나 형식이 틀린 줄, 첫 `##` 이전의 문항 줄은 건너뛴다. 빈 보기와 같은 문항 안의 중복 보기는 뺀다. ★가 4개 이상이면 3으로 본다.
+  - `>` 줄이 여러 개면 줄바꿈으로 이어 하나의 안내문으로 쓴다. 파일은 UTF-8(BOM 허용)로 읽는다.
+  - 문항 id는 `{주제}-{주제 안 순번}`(예: `직업-1`, `운동-1`)이다.
+  - 파일이 없거나 읽지 못하거나(인코딩 오류 포함) topic 문항이 0개면 fallback으로 넘어간다.
 - 현재 구성: 프로필 2주제(직업 3문항, 거주지 1문항), topic 4주제(여가 8, 취미 10, 운동 32, 휴가/출장 5개 보기)
 
 **`data/default_topics.json`**
