@@ -168,7 +168,69 @@ flowchart TD
 - `.env`, 세션 기록(`data/history/`), 로그, 평가 결과는 `.gitignore`로 커밋에서 제외한다.
 
 ## 4. API (UI ↔ 그래프 내부 인터페이스)
-HTTP API는 없다. Streamlit이 같은 프로세스 안에서 함수를 호출한다.
+### 4-2. API 스펙 (표준 규약 대응)
+**HTTP API는 없다.** `POST /query` 같은 엔드포인트, 요청 형식(Content-Type·Body), HTTP 응답 코드가 정의되어 있지 않다. 서버 배포는 범위 밖이다(PRD §7 Out of Scope).
+지금 있는 API는 Streamlit 화면(`app.py`)이 같은 프로세스 안에서 직접 부르는 **파이썬 함수 7개**뿐이다.
+
+| # | 함수 (모듈) | 입력 | 반환 | 오류 |
+|---|-------------|------|------|------|
+| 1 | `start_session(graph=None, session_id=None)` (`opic.graph`) | - | `(session_id, payload)`. 첫 payload는 `kind="survey"` | `LLMError`: 대체 설문 생성 시 모든 모델 실패 |
+| 2 | `resume(session_id, value, graph=None)` (`opic.graph`) | 지금 단계의 입력값(아래 표) | 다음 단계 payload, 끝나면 `kind="done"` | `LLMError`: 질문·채점·피드백 생성 시 모든 모델 실패 |
+| 3 | `retry(session_id, graph=None)` (`opic.graph`) | session_id | 다음 단계 payload (마지막 체크포인트부터 재실행) | `LLMError` |
+| 4 | `get_state(session_id, graph=None)` (`opic.graph`) | session_id | SessionState dict (§3 필드 23개) | - |
+| 5 | `current_payload(session_id, graph=None)` (`opic.graph`) | session_id | 지금 기다리는 payload, 없으면 `None` | - |
+| 6 | `list_sessions(history_dir)` (`opic.storage`) | 기록 폴더 (`Settings.history_dir`) | `[{session_id, date, initial_level, final_level, avg_grade}]`, 최신순 | - (깨진 파일은 건너뜀) |
+| 7 | `load_session(session_id, history_dir)` (`opic.storage`) | session_id, 기록 폴더 | 저장된 세션 JSON (§2 storage 기록 필드) | `FileNotFoundError`: 기록 없음, `StorageError`: 잘못된 session_id |
+
+- 입력 검증 실패(설문 선택 개수, 최소 단어 수 등)는 예외가 아니다. 같은 단계 payload의 `error`에 한국어 안내문이 담겨 돌아온다.
+- `LLMError`가 나도 체크포인트는 남아 있어 `retry(session_id)`로 같은 단계부터 이어 간다. 화면은 '다시 시도' 버튼으로 보여 준다.
+
+**호출 순서 예시** (실제 화면과 같은 흐름)
+```python
+from opic import graph as g
+
+sid, p = g.start_session()                                # p["kind"] == "survey"
+# 설문: profile 문항(직업-1~3, 거주지-1)은 1개씩, topic 문항은 1개 이상 → 첫 질문 p["kind"] == "answer"
+p = g.resume(sid, {"answers": {"직업-1": ["사업/회사"], "직업-2": ["예"], "직업-3": ["학위 과정 수업"],
+                              "거주지-1": ["개인 주택이나 아파트에 홀로 거주"], "여가활동-1": ["영화 보기"],
+                              "취미/관심사-1": ["음악 감상하기"], "운동-1": ["농구"], "휴가/출장-1": ["해외여행"]},
+                  "level": "IM"})
+p = g.resume(sid, "I usually watch action movies at home on weekends ...")   # 답변 → p["kind"] == "feedback"
+p = g.resume(sid, True)                                   # 다음 문제 → "answer" (3문항 뒤에는 "adjust"가 올 수 있음)
+# ... 5문항 뒤 p["kind"] == "done"
+```
+
+**payload 예시** (키·단계 순서는 위 호출 순서를 가짜 LLM으로 실행해 확인. 점수 값은 예시, done은 `data/history`의 실제 기록 값)
+```json
+{"kind": "answer", "item_index": 1, "total": 5, "level": "IM", "topic": "영화 보기",
+ "question": "What kind of movies do you usually watch, and where do you watch them?",
+ "question_type": "습관", "min_words": 5, "error": null}
+```
+```json
+{"kind": "feedback", "item_index": 1, "total": 5, "is_last": false,
+ "item": {"question": "...", "question_type": "습관", "topic": "영화 보기", "level": "IM",
+          "answer": "I usually watch action movies at home on weekends ...", "korean_ratio": 0.0,
+          "pii_types": [], "injection_flags": [],
+          "rubric_scores": {"grammar": 4, "vocabulary": 3, "organization": 4, "task": 4},
+          "weighted_score": 3.75, "penalty": 0.0, "final_score": 3.75, "raw_grade": "IH", "grade": "IH", "achieved": true,
+          "corrections": [], "alternatives": ["..."], "translation": null}}
+```
+```json
+{"kind": "done", "session_id": "20261105-104527-c71da0",
+ "summary": {"item_grades": ["IM", "IM", "IL", "IH", "IH"], "average_grade": "IM",
+             "initial_level": "IH", "final_level": "IM", "level_changed": true}}
+```
+
+**표준 규약 항목과의 대응**
+
+| 규약 항목 | 이 프로그램 |
+|-----------|-------------|
+| 요청 (`POST /query`, JSON Body) | 없음. `resume(session_id, 답변 텍스트)` 함수 호출이 가장 가깝다 |
+| `answer` | `feedback` payload의 `item`: 교정(`corrections`), 대체 문장(`alternatives`), 번역(`translation`), 등급(`grade`) |
+| `contexts` | 해당 없음(RAG·검색 문서 없음). 판정 근거는 `item`의 `rubric_scores`, `weighted_score`, `penalty`, `raw_grade`→`grade`(상한)로 대신한다 |
+| `trace` | 응답에는 없다. LLM 호출 단계별 기록은 `logs/traces.jsonl`에 남는다(§13, 세션 id로 찾음) |
+
+### 함수·payload 상세
 
 | 함수 | 설명 | 입력 | 반환 |
 |------|------|------|------|
@@ -177,8 +239,8 @@ HTTP API는 없다. Streamlit이 같은 프로세스 안에서 함수를 호출�
 | `retry(session_id)` | 오류 후 마지막 체크포인트부터 재실행 (`graph.invoke(None, config)`) | session_id | `interrupt_payload \| final_state` |
 | `get_state(session_id)` | 체크포인터의 현재 state 조회 | session_id | SessionState |
 | `current_payload(session_id)` | 화면을 다시 그릴 때 지금 기다리는 interrupt 값 | session_id | `interrupt_payload \| None` |
-| `storage.list_sessions()` | 기록 목록 | - | [{session_id, date, initial_level, final_level, avg_grade}] |
-| `storage.load_session(id)` | 기록 상세 | session_id | 저장된 세션 JSON |
+| `storage.list_sessions(history_dir)` | 기록 목록 | 기록 폴더 | [{session_id, date, initial_level, final_level, avg_grade}] |
+| `storage.load_session(id, history_dir)` | 기록 상세 | session_id, 기록 폴더 | 저장된 세션 JSON |
 
 | interrupt kind | UI 표시 | resume 값 |
 |----------------|---------|-----------|
