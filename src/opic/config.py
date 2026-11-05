@@ -22,7 +22,7 @@ PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 
 DEFAULT_MODEL_PRIMARY = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
 DEFAULT_MODEL_FALLBACKS = ("global.anthropic.claude-haiku-4-5-20251001-v1:0",)
-DEFAULT_REGION = "us-east-1"
+DEFAULT_REGION = "ap-northeast-2"
 DEFAULT_MAX_RETRIES = 2
 DEFAULT_SURVEY_FILE = "opic_survey.md"
 DEFAULT_HISTORY_DIR = "data/history"

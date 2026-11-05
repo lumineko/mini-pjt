@@ -247,7 +247,7 @@ interrupt 값(payload)의 키 (`kind` 공통):
 | AWS_SECRET_ACCESS_KEY | AWS 시크릿 키 | ○ (키 방식일 때) |
 | AWS_SESSION_TOKEN | 임시 자격 증명 토큰 | △ |
 | AWS_PROFILE | 로컬 AWS 프로필 이름 | ○ (둘 중 하나) |
-| AWS_REGION | Bedrock 호출 리전 (예: us-east-1) | ○ |
+| AWS_REGION | Bedrock 호출 리전 (기본 ap-northeast-2) | ○ |
 | MODEL_PRIMARY | 기본 모델 ID (기본값 `global.anthropic.claude-sonnet-4-5-20250929-v1:0`) | △ |
 | MODEL_FALLBACKS | 쉼표로 구분한 폴백 모델 ID 목록 (기본값 `global.anthropic.claude-haiku-4-5-20251001-v1:0`) | △ |
 | LLM_MAX_RETRIES | 모델당 재시도 횟수 (기본 2) | △ |

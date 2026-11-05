@@ -10,7 +10,7 @@ from opic.config import ConfigError, load_settings, setup_logging
 
 def test_defaults_without_any_env():
     s = load_settings({})
-    assert s.aws_region == "us-east-1"
+    assert s.aws_region == "ap-northeast-2"
     assert s.aws_profile is None
     assert s.has_credentials is False
     assert s.model_primary == "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
