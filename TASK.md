@@ -44,7 +44,7 @@
 - [x] scorer 평가 실행 → 목표 지표 달성까지 `prompts/scorer.md`·`rubric.json` 조정 (SERVICE §14.2) — scorer@1 목표 달성(정확 61.1%), scorer@2로 개선(정확 83.3%)
 
 ### Phase 4. 그래프
-- [ ] `routing.py` 분기 함수 5개 (SERVICE §3) + `tests/test_routing.py`
+- [x] `routing.py` 분기 함수 5개 (SERVICE §3) + `tests/test_routing.py`
 - [ ] `graph.py` 고정 엣지·조건 분기 조립, `record_item` 노드, HITL interrupt, `start_session`/`resume`/`get_state`
 - [ ] `tests/test_graph_flow.py` (fake LLM으로 5문항, 문항 안 순서 scorer → score_and_grade → feedback, 3문항 점검, 조정 흐름)
 
@@ -93,3 +93,4 @@
 | 2026-11-05 | Phase 3: `agents/` 4종 | 순수 함수 + 노드 `run(state)` 2층 구조. 동적 Pydantic 스키마(질문 유형 Literal·한글 질문 거부, rubric 항목별 1~5, 한글 있으면 번역 필수, 교정 ≤5·대체 1~3, 대체 설문 보기 정리). 노드는 pending을 이어 붙여 갱신. scorer.score_answer가 평가 규약 충족(run_scorer_eval 실제 모드 연결 확인). 공용 `tests/conftest.py` fake_llm. SERVICE §2·§9 반영. 테스트 25개 추가, 전체 344개 통과 | scorer 평가 실행 (Bedrock 키 필요) |
 | 2026-11-05 | Phase 3: scorer 실제 평가 (Phase 3 완료) | 버그 수정: .env의 빈 `AWS_PROFILE=`/`AWS_SESSION_TOKEN=`을 boto3가 직접 읽어 실패 → `config.drop_blank_aws_vars`로 제거(테스트 2개). 평가 scorer@1 · Sonnet 4.5: 정확 61.1%, ±1 100%, 일관성 0.044, 인젝션 100%, 한글 100% → 목표 모두 통과. 불일치 14건: IH 수준 답변을 5점(AL)으로 주는 과대 채점 6건·IM→IH 3건, 주제 이탈 2건 IM(task 1이어도 다른 항목 높음), 한 단계 낮음 3건. 결과 `evals/results/20261105-101700_scorer@1.json`(커밋 제외) | Phase 4 `routing.py` (scorer v2 튜닝은 사용자 결정) |
 | 2026-11-05 | Phase 3: scorer 프롬프트 v2 | 사용자 결정으로 프롬프트만 개선(루브릭·파이썬 규칙 변경 없음): 5점은 '고급 기능'이 보일 때만, 오류 없음만으로는 4점·단순 문장은 3점, 항목별 5점·4점 기준 명시, 항목마다 따로 판단. 결과 scorer@2: 정확 61.1%→**83.3%**, ±1 100%, 일관성 0.044→0.000, 인젝션·한글 100%. IH→AL 과대 6건·주제 이탈 2건 해소. 남은 6건은 경계 근처(IM→IH 3건 가중 3.75~4.25, 한 단계 낮음 3건). 결과 `evals/results/20261105-102159_scorer@2.json` | Phase 4 `routing.py` |
+| 2026-11-05 | Phase 4: `routing.py` | 분기 함수 5개(SERVICE §3 표대로) + 방어 처리(필요 값 비면 같은 입력 노드, 5문항 이상 요약, 조정 중복 적용 금지), 노드 이름 상수, `CONDITIONAL_EDGES`(반환 타입과 도착 노드 일치 테스트), 분기 로그. SERVICE §2·§3 반영. 테스트 28개 추가, 전체 374개 통과 | `graph.py` 조립 |
