@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `evals/` — 실제 모델로 채점 품질을 재는 평가 세트·스크립트 (SERVICE.md §14.2, 수동 실행)
 
 # 개발 명령어
-Phase 0~5 구현 완료. Phase 6(트레이스·가드레일) 진행 중(트레이스·출력/입력 가드레일 완료, PRD 반영만 남음).
+Phase 0~6 구현 완료(트레이스·로컬 가드레일 포함). 남은 백로그 없음.
 
 - 설치 (Python 3.14): `python -m venv .venv` → `.venv\Scripts\python -m pip install -r requirements.txt`
 - 자격 증명: `.env.example`을 `.env`로 복사해 AWS 액세스 키 **또는** `AWS_PROFILE` 중 하나와 `AWS_REGION`을 채운다. 키가 필요한 것은 앱 실행·`evals/`뿐이고, pytest는 키 없이 돈다.
