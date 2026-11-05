@@ -93,7 +93,7 @@ flowchart TD
 | adjust_proposal | AdjustProposal \| None | `direction`(up/down), `suggested_level` |
 | adjust_response | bool \| None | 조정 수락 여부 (None = 미응답) |
 | adjust_applied | bool | 조정 적용 여부 |
-| summary | SessionSummary \| None | 문항별 등급, 평균 등급, 레벨 변경 여부 |
+| summary | SessionSummary \| None | 문항별 등급, 평균 등급, 시작·최종 레벨, 레벨 변경 여부 |
 | done | bool | 세션 종료 여부 |
 
 ### 노드
