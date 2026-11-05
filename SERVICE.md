@@ -51,10 +51,11 @@ flowchart TD
 | `src/opic/graph.py` | StateGraph 조립, 체크포인터, `start_session` / `resume` / `get_state` | 모든 노드 |
 | `src/opic/state.py` | `SessionState`, `ItemResult`, `Pending` 등 타입 정의 | - |
 | `src/opic/routing.py` | 분기 함수 5개 `route_after_survey` / `route_after_answer` / `route_after_feedback` / `route_after_check` / `route_after_confirm` (State → 다음 노드 이름, 순수 함수) | state |
-| `src/opic/agents/survey.py` | Survey Agent (파일 파싱, 없으면 LLM fallback 생성) | tools.survey, llm |
-| `src/opic/agents/interviewer.py` | Interviewer Agent (배정된 주제 + 레벨로 질문 1개) | tools.level, llm |
-| `src/opic/agents/scorer.py` | Scorer Agent (루브릭 항목 점수만) | llm, data/rubric.json |
-| `src/opic/agents/feedback.py` | Feedback Agent (교정, 대체 문장, 한글 구간 번역) | tools.korean, llm |
+| `src/opic/agents/survey.py` | Survey Agent. `generate_fallback_survey(topic)`, 노드 `run(state, rng)` (파일 파싱, 없으면 LLM fallback 생성) | tools.survey, llm |
+| `src/opic/agents/interviewer.py` | Interviewer Agent. `generate_question(topic, level, previous, profile)`, 노드 `run(state)`. 유형은 레벨 후보 Literal, 질문에 한글이 있으면 검증 실패 | tools.level, llm |
+| `src/opic/agents/scorer.py` | Scorer Agent. `score_answer(question, level, answer, korean_spans)`(평가 규약), 노드 `run(state)`. 점수 스키마는 rubric.json 항목에서 생성(1~5 정수), `PROMPT_ID`/`PROMPT_VERSION` | llm, data/rubric.json |
+| `src/opic/agents/feedback.py` | Feedback Agent. `generate_feedback(question, level, answer, grade, achieved, korean_spans)`, 노드 `run(state)`. 교정 최대 5·대체 1~3, 한글 구간이 있으면 번역 필수(없으면 검증 실패) | llm |
+| `src/opic/agents/__init__.py` | 공용: `build_messages(prompt, **값)`, `call_metadata(state, node, prompt)` | prompts |
 | `src/opic/tools/survey.py` | `parse_survey(text)`, `load_survey_file(path)` → `{items, notice}` 또는 None(fallback), `pick_default_topic(rng)` | opic_survey.md, data/default_topics.json |
 | `src/opic/tools/korean.py` | `detect_korean(text)` → `{ratio, spans, korean_words, total_words}`, `count_words(text)`. 비율 = 한글이 들어간 단어 / 전체 단어(글자가 있는 공백 단위 덩어리). spans는 연속 한글 묶음(영문 글자 없이 공백·문장부호·숫자만 사이에 있으면 합침) | state |
 | `src/opic/tools/level.py` | `get_level_guide(level)` → `{level, question_types, guide}`, `get_previous_questions(state)` → 완료 문항의 `{question, question_type, topic, level}` 목록 | data/levels.json |
@@ -265,7 +266,7 @@ mini-pjt/
 │  └─ prompts/ survey.md interviewer.md scorer.md feedback.md
 ├─ tests/                    # pytest 기본 실행 대상 (실제 LLM 호출 없음)
 │  ├─ fixtures/              # 공용 샘플 설문, 샘플 State, 가짜 LLM 응답
-│  ├─ conftest.py            # fake LLM 등 공용 fixture
+│  ├─ conftest.py            # fake_llm fixture (llm.set_model_factory로 가짜 모델 주입, 응답 큐·호출 기록)
 │  ├─ test_smoke.py          # 설치 라이브러리 핵심 API import 확인 (Phase 1)
 │  ├─ test_scoring.py  test_difficulty.py  test_korean.py  test_topic.py  test_validation.py
 │  ├─ test_survey.py   test_summary.py  test_level.py  test_storage.py
