@@ -178,7 +178,7 @@ def test_graph_session_writes_traces_with_node_metadata(fake_llm, tmp_path, monk
     monkeypatch.setenv("SURVEY_FILE", str(ROOT_DIR / "opic_survey.md"))
     s = settings(tmp_path)
     trace.install(s)
-    fake_llm.push({"question": "Tell me about your favorite park in detail.", "question_type": "묘사"})
+    fake_llm.push({"question": "Tell me about your favorite park in detail.", "question_type": "묘사", "topic_keywords": ["park"]})
     graph = g.build_graph()
     sid, payload = g.start_session(graph)
     answers = {item["id"]: [item["options"][0]["label"]] for item in payload["items"]}

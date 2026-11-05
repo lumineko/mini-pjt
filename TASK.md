@@ -55,7 +55,7 @@
 
 ### Phase 6. 트레이스·가드레일 (SERVICE §13)
 - [x] 트레이스 저장 방식 결정 (로컬 JSONL / 외부 도구, 외부 도구는 사용자 승인 필요) 및 after_call 훅 구현
-- [ ] 출력 가드레일 post 훅 (언어 검사, 번역 누락, 주제 이탈)
+- [x] 출력 가드레일 post 훅 (언어 검사, 번역 누락, 주제 이탈)
 - [ ] Bedrock Guardrails 적용 여부 결정 및 guardrail_config 연결
 - [ ] PRD §6 비기능 요구사항에 트레이스·가드레일 항목 반영
 
@@ -100,3 +100,4 @@
 | 2026-11-05 | Phase 5: 실제 Bedrock E2E | `evals/run_e2e.py`(수동): AppTest로 app.py를 실제 Bedrock과 돌려 5문항 세션 완주(76s, 조정 질문 IM→IH 수락, 4·5번 IH 출제), 폴백(없는 기본 모델 → Haiku 자동 전환), 대체 설문(거주지, 보기 8개). PRD 성공 기준 1~10 + 추가 3개(질문 영어·배정 주제, 언어 규칙, 짧은 답변 화면 차단) **13/13 통과**. 답변 payload에 `topic` 추가(화면 표시, SERVICE §4). 기록은 evals/results/e2e_history(커밋 제외). 참고: 미리 써 둔 답변이 질문 세부와 어긋난 3·4·5번은 task 1~2점으로 낮게 채점됨(채점이 의도대로 동작) | CLAUDE.md 실행·테스트 명령 갱신 |
 | 2026-11-05 | Phase 5: CLAUDE.md 명령 갱신 (Phase 5 완료) | 개발 명령어(설치, .env, 앱 실행, 테스트 전체·하나, 평가 3종)와 코드 구조(한 문항 흐름, 모듈별 규칙: 판정은 rules/, LLM은 invoke_llm만, 프롬프트 version, HITL 재실행 주의, fake_llm fixture, 커밋 제외 목록)로 다시 씀. 문서의 명령 실제 실행 확인 | Phase 6 트레이스·가드레일 (사용자 결정 필요) |
 | 2026-11-05 | Phase 6: 트레이스 (로컬 JSONL) | 사용자 결정: 로컬 JSONL, 메타데이터+출력(입력·답변 원문 제외), 보존 제한 없음. `trace.py`(TraceRecorder·install·uninstall·read_traces, 시도 1번 = 한 줄, 잠금, 기록 실패는 경고만). `llm.py`에 `error_call_hooks` 추가(실패 시도도 기록, 예외 삼킴), 훅 metadata에 `elapsed_ms`. `TRACE_FILE`(기본 logs/traces.jsonl, off로 끔), app.py에서 설치, E2E는 evals/results에 따로. conftest에 훅 목록 복원 fixture. SERVICE §2·§8·§9·§11·§13 반영. `tests/test_trace.py` 13개, 전체 434개 통과 | 출력 가드레일 post 훅 |
+| 2026-11-05 | Phase 6: 출력 가드레일 post 훅 | 사용자 결정: 주제 이탈은 키워드 자기검증(추가 LLM 호출 없음), 위반 시 다음 모델로 폴백. `guardrails.py`(after 훅 맨 앞): interviewer는 `topic_keywords` 중 일반 단어 아닌 것이 질문에 있는지(구는 모든 단어, 4글자 이상 앞부분 일치), feedback은 corrected·대체 문장 한글 없음, reason 한국어, 번역 누락·번역에 한글 남음(`needs_translation` 메타데이터). interviewer 스키마에 `topic_keywords`(1~3, 영어) 추가, 프롬프트 interviewer@2. app.py에서 설치. 테스트 `tests/test_guardrails.py` 31개 + 스키마 2개, 전체 467개 통과. 실제 Bedrock E2E 13/13 통과(위반 0건, 트레이스로 키워드·스로틀링 재시도 확인) | Bedrock Guardrails 적용 여부 결정 |

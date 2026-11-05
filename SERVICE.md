@@ -52,7 +52,7 @@ flowchart TD
 | `src/opic/state.py` | `SessionState`, `ItemResult`, `Pending` 등 타입 정의 | - |
 | `src/opic/routing.py` | 분기 함수 5개 `route_after_survey` / `route_after_answer` / `route_after_feedback` / `route_after_check` / `route_after_confirm` (State → 다음 노드 이름, 순수 함수), 노드 이름 상수, `CONDITIONAL_EDGES`(출발 노드 → 함수·가능한 도착 노드) | state, rules.difficulty |
 | `src/opic/agents/survey.py` | Survey Agent. `generate_fallback_survey(topic)`, 노드 `run(state, rng)` (파일 파싱, 없으면 LLM fallback 생성) | tools.survey, llm |
-| `src/opic/agents/interviewer.py` | Interviewer Agent. `generate_question(topic, level, previous, profile)`, 노드 `run(state)`. 유형은 레벨 후보 Literal, 질문에 한글이 있으면 검증 실패 | tools.level, llm |
+| `src/opic/agents/interviewer.py` | Interviewer Agent. `generate_question(topic, level, previous, profile)`, 노드 `run(state)`. 유형은 레벨 후보 Literal, 질문에 한글이 있으면 검증 실패, `topic_keywords`(영어 1~3개, 출력 가드레일용) | tools.level, llm |
 | `src/opic/agents/scorer.py` | Scorer Agent. `score_answer(question, level, answer, korean_spans)`(평가 규약), 노드 `run(state)`. 점수 스키마는 rubric.json 항목에서 생성(1~5 정수), `PROMPT_ID`/`PROMPT_VERSION` | llm, data/rubric.json |
 | `src/opic/agents/feedback.py` | Feedback Agent. `generate_feedback(question, level, answer, grade, achieved, korean_spans)`, 노드 `run(state)`. 교정 최대 5·대체 1~3, 한글 구간이 있으면 번역 필수(없으면 검증 실패) | llm |
 | `src/opic/agents/__init__.py` | 공용: `build_messages(prompt, **값)`, `call_metadata(state, node, prompt)` | prompts |
@@ -66,6 +66,7 @@ flowchart TD
 | `src/opic/rules/summary.py` | `summarize(items, initial_level, level_history)`: 문항별 등급, 평균 등급(순서값 평균 반올림), 시작·최종 레벨, 변경 여부. 정확히 5문항·이력 연속성 검증 (순수 함수) | rules.scoring, state(SESSION_ITEMS) |
 | `src/opic/storage.py` | `save_session(state, dir)`(완료 세션만, 임시 파일 후 교체), `load_session(id, dir)`, `list_sessions(dir)`(최신순, 깨진 파일 건너뜀). 기록 필드: session_id, started_at, survey_source, survey_answers, initial_level, current_level, level_history, items, summary, schema_version, saved_at. session_id는 `[A-Za-z0-9_-]`만 허용 | data/history/ |
 | `src/opic/llm.py` | **모든 LLM 호출의 단일 진입점** (에이전트는 Bedrock을 직접 호출하지 않음). Bedrock 클라이언트, 재시도·폴백 체인, 구조화 출력, 호출 로깅, 트레이스 메타데이터 전달, 훅 `before_call_hooks`/`after_call_hooks`/`error_call_hooks` (§13) | langchain-aws, config |
+| `src/opic/guardrails.py` | 출력 가드레일(after 훅, 파이썬 규칙). `check_interviewer(output)`(주제 키워드가 질문에 있는지), `check_feedback(output, needs_translation)`(언어 규칙·번역 누락), `output_guard`(위반 시 GuardrailViolation), `install()`/`uninstall()` (§13) | llm, tools.korean |
 | `src/opic/trace.py` | LLM 호출 트레이스(로컬 JSONL). `install(settings)`(after 훅 맨 끝 + error 훅에 기록기 등록, 여러 번 불러도 1개), `uninstall()`, `TraceRecorder`, `read_traces(path)` (§13) | llm, config |
 | `src/opic/config.py` | `.env` 로드, 경로·설정, logging 설정 | python-dotenv |
 | `src/opic/prompts/*.md` | 에이전트별 프롬프트 4종(survey, interviewer, scorer, feedback). 머리말 `id`/`version` + `[system]`/`[user]` 두 부분, 변수는 `${name}` | - |
@@ -104,7 +105,7 @@ flowchart TD
 |------|------------------------------|------|------|
 | survey_agent | **Python 분기 + LLM(fallback 시에만)** | opic_survey.md | 파일 파싱 결과가 있으면 그대로 쓰고(LLM 호출 없음), 없으면 `pick_default_topic()`(6개 중 1개) 후 LLM이 선택형 설문 1개 생성. 대체 설문은 직업·거주지가 뽑혀도 `kind=topic`이며, 보기는 질문 주제가 될 수 있는 내용으로 만든다. survey_source, survey_items |
 | ask_survey_and_level | HITL `interrupt(kind=survey)` + Python | survey_items, survey_notice | 선택 개수 검증(profile=1, topic≥1). 통과 시 survey_answers, initial_level, current_level, **topic_plan**(`assign_topics`), survey_error=None. 실패 시 survey_error만 설정(`route_after_survey`가 다시 이 노드로 보냄) |
-| interviewer_agent | LLM + tools (`get_level_guide`, `get_previous_questions`) | `topic_plan[len(items)]`, profile 응답(배경 정보), current_level, 이전 질문·유형 | 구조화 출력 `{question, question_type}`. 주제는 배정된 것만 쓰고, 유형은 현재 레벨의 `question_types` 후보 안에서 LLM이 고른다(후보 밖이면 Pydantic 검증 실패 → 재호출). 이전 유형과 겹치지 않게 하라고 지시한다. current_question, current_question_type |
+| interviewer_agent | LLM + tools (`get_level_guide`, `get_previous_questions`) | `topic_plan[len(items)]`, profile 응답(배경 정보), current_level, 이전 질문·유형 | 구조화 출력 `{question, question_type, topic_keywords}`(키워드는 출력 가드레일 검사용, State에는 저장 안 함). 주제는 배정된 것만 쓰고, 유형은 현재 레벨의 `question_types` 후보 안에서 LLM이 고른다(후보 밖이면 Pydantic 검증 실패 → 재호출). 이전 유형과 겹치지 않게 하라고 지시한다. current_question, current_question_type |
 | await_answer | HITL `interrupt(kind=answer)` + Python | current_question | `validate_answer` 통과 시 current_answer와 pending(`detect_korean` 결과)을 만들고 answer_error=None. 실패 시 answer_error만 설정(`route_after_answer`가 다시 이 노드로 보냄) |
 | scorer_agent | LLM (구조화 출력, temperature 0) | question, answer, 출제 레벨, 루브릭 정의, pending.korean_spans | pending.rubric_scores (항목별 1~5, Pydantic 검증). **영어 부분만 평가**하고 한글 구간은 무시하라고 프롬프트에 명시한다(한글 감점은 score_and_grade가 한 번만 적용) |
 | score_and_grade | Python | pending.rubric_scores, pending.korean_ratio, rubric.json, 출제 레벨, current_level | 가중 합산 → 한글 감점 → raw_grade → 출제 레벨+1 상한 → achieved. 결과를 pending.grading에 저장 |
@@ -270,7 +271,7 @@ mini-pjt/
 │  └─ history/               # 세션 기록 JSON
 ├─ logs/                     # app.log, traces.jsonl (LLM 호출 트레이스)
 ├─ src/opic/
-│  ├─ app.py  graph.py  state.py  routing.py  llm.py  trace.py  config.py  storage.py
+│  ├─ app.py  graph.py  state.py  routing.py  llm.py  guardrails.py  trace.py  config.py  storage.py
 │  ├─ agents/  survey.py interviewer.py scorer.py feedback.py
 │  ├─ tools/   survey.py korean.py level.py
 │  ├─ rules/   scoring.py difficulty.py topic.py validation.py summary.py
@@ -281,7 +282,7 @@ mini-pjt/
 │  ├─ test_smoke.py          # 설치 라이브러리 핵심 API import 확인 (Phase 1)
 │  ├─ test_scoring.py  test_difficulty.py  test_korean.py  test_topic.py  test_validation.py
 │  ├─ test_survey.py   test_summary.py  test_level.py  test_storage.py
-│  ├─ test_routing.py  test_llm_fallback.py  test_agents.py  test_golden_set.py  test_trace.py
+│  ├─ test_routing.py  test_llm_fallback.py  test_agents.py  test_golden_set.py  test_trace.py  test_guardrails.py
 │  ├─ test_graph_flow.py     # LLM을 fake로 바꿔 5문항, 3문항 점검(수락/거절/경계), 피드백 단계 흐름 검증
 │  └─ test_app.py            # Streamlit AppTest(streamlit 내장) + fake LLM으로 화면 조작 검증
 └─ evals/                    # 실제 Bedrock 호출, 수동 실행 (비용 발생)
@@ -413,12 +414,21 @@ mini-pjt/
 - 기록 실패는 경고 로그만 남기고 호출에 영향을 주지 않는다. 여러 세션이 동시에 써도 잠금으로 줄이 섞이지 않는다.
 - 평가 E2E(`evals/run_e2e.py`)는 `evals/results/e2e_traces.jsonl`에 따로 쓴다.
 
+**출력 가드레일** (Phase 6-2 구현, `guardrails.py`)
+- 파이썬 규칙만 쓴다(추가 LLM 호출 없음). `app.py`가 `guardrails.install()`로 after 훅 맨 앞에 단다.
+- 위반하면 `GuardrailViolation` → 다음 모델(사용자 결정). 모든 모델이 위반하면 LLMError → '다시 시도'. 트레이스에는 error로 남는다.
+
+| role | 검사 | 근거 |
+|------|------|------|
+| interviewer | 주제 이탈: `topic_keywords` 중 일반 단어(experience, favorite 등)가 아닌 것 하나 이상이 질문에 있다. 구는 단어가 모두 있어야 하고, 4글자 이상이면 앞부분 일치(park/parks/parking)도 인정 | 키워드 자기검증(사용자 결정). 배정 주제는 한국어, 질문은 영어라 직접 비교 불가 |
+| feedback | `corrected`, `alternatives`에 한글 없음 (`original`은 학습자 문장이라 검사 안 함) | 언어 규칙 |
+| feedback | `reason`은 한국어(한글 단어 1개 이상) | 언어 규칙 |
+| feedback | 한글 구간이 있으면(`metadata.needs_translation`) 번역이 비지 않음, 번역에 한글이 남지 않음 | 번역 누락 (스키마 필수 검증 + 이중 확인) |
+
+- 이미 Pydantic 스키마가 막는 것(질문 한글, 유형 후보, 점수 범위, 키워드 한글·빈 값)은 훅에서 다시 보지 않는다.
+
 **나중에 추가할 후보** (Phase 6에서 결정)
 - Bedrock Guardrails: `ChatBedrockConverse`의 `guardrail_config`로 붙인다. 새 라이브러리는 없고, AWS 콘솔에서 Guardrail을 따로 만들어야 한다.
-- 출력 검사(post 훅):
-  - 교정·대체 문장이 영어인지, 피드백 설명이 한국어인지
-  - 한글 구간이 있는데 번역이 빠지지 않았는지
-  - 질문이 배정된 주제를 지키는지
 - 결정된 트레이스·가드레일 항목은 PRD §6 비기능 요구사항에 추가한다(Phase 6 마지막 작업).
 
 ## 14. 테스트·평가 전략

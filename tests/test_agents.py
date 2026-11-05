@@ -65,7 +65,7 @@ def interview_state(**extra):
 
 
 def test_interviewer_uses_assigned_topic_level_and_profile(fake_llm):
-    fake_llm.push({"question": "Tell me about the movies you like to watch.", "question_type": "습관"})
+    fake_llm.push({"question": "Tell me about the movies you like to watch.", "question_type": "습관", "topic_keywords": ["movies"]})
     out = interviewer.run(interview_state())
     assert out == {"current_question": "Tell me about the movies you like to watch.", "current_question_type": "습관"}
 
@@ -79,7 +79,7 @@ def test_interviewer_uses_assigned_topic_level_and_profile(fake_llm):
 
 
 def test_interviewer_second_item_gets_next_topic_and_previous(fake_llm):
-    fake_llm.push({"question": "What kind of books do you usually read?", "question_type": "묘사"})
+    fake_llm.push({"question": "What kind of books do you usually read?", "question_type": "묘사", "topic_keywords": ["books"]})
     interviewer.run(interview_state(items=[make_item(1, topic="영화 보기", question_type="습관")]))
     user = fake_llm.user_text()
     assert "Assigned topic: 독서" in user
@@ -90,20 +90,22 @@ def test_interviewer_second_item_gets_next_topic_and_previous(fake_llm):
 @pytest.mark.parametrize(
     "bad",
     [
-        {"question": "Tell me about a concert you went to recently.", "question_type": "롤플레이"},  # IM 후보 밖
-        {"question": "좋아하는 영화에 대해 말해 주세요. Tell me.", "question_type": "묘사"},  # 한글 질문
-        {"question": "Hi?", "question_type": "묘사"},  # 너무 짧음
+        {"question": "Tell me about a concert you went to recently.", "question_type": "롤플레이", "topic_keywords": ["concert"]},  # IM 후보 밖
+        {"question": "좋아하는 영화에 대해 말해 주세요. Tell me.", "question_type": "묘사", "topic_keywords": ["movie"]},  # 한글 질문
+        {"question": "Hi?", "question_type": "묘사", "topic_keywords": ["hi"]},  # 너무 짧음
+        {"question": "Tell me about the movies you like.", "question_type": "묘사"},  # 주제 키워드 없음
+        {"question": "Tell me about the movies you like.", "question_type": "묘사", "topic_keywords": ["영화"]},  # 한글 키워드
     ],
 )
 def test_interviewer_invalid_output_goes_to_fallback(fake_llm, bad):
-    fake_llm.push(bad, {"question": "Can you describe your favorite movie theater?", "question_type": "묘사"})
+    fake_llm.push(bad, {"question": "Can you describe your favorite movie theater?", "question_type": "묘사", "topic_keywords": ["movie theater"]})
     out = interviewer.run(interview_state())
     assert out["current_question_type"] == "묘사"
     assert len(fake_llm.calls) == 2
 
 
 def test_interviewer_level_changes_candidates(fake_llm):
-    fake_llm.push({"question": "Talk about how movies have changed over the years and your opinion.", "question_type": "의견·이슈"})
+    fake_llm.push({"question": "Talk about how movies have changed over the years and your opinion.", "question_type": "의견·이슈", "topic_keywords": ["movies"]})
     out = interviewer.run(interview_state(current_level="AL"))
     assert out["current_question_type"] == "의견·이슈"
 

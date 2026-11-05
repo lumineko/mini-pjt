@@ -149,7 +149,7 @@ def test_invalid_survey_reinterrupts_with_error_then_proceeds(fake_llm, monkeypa
     assert bad["kind"] == "survey" and bad["error"]
 
     answers = {item["id"]: [item["options"][0]["label"]] for item in payload["items"]}
-    fake_llm.push({"question": "Tell me about the movies you like to watch.", "question_type": "묘사"})
+    fake_llm.push({"question": "Tell me about the movies you like to watch.", "question_type": "묘사", "topic_keywords": ["movies"]})
     asked = g.resume(sid, {"answers": answers, "level": "IM"}, graph)
     assert asked["kind"] == "answer" and asked["item_index"] == 1 and asked["total"] == 5
     assert asked["question"] == "Tell me about the movies you like to watch."

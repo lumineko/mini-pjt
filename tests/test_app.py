@@ -16,7 +16,7 @@ def scores(n):
 
 
 def question(i):
-    return {"question": f"Tell me about topic number {i} in detail.", "question_type": "묘사"}
+    return {"question": f"Tell me about topic number {i} in detail.", "question_type": "묘사", "topic_keywords": ["topic"]}
 
 
 @pytest.fixture

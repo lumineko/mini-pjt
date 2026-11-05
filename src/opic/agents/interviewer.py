@@ -3,6 +3,7 @@
 - 주제는 파이썬이 배정한 것(topic_plan)만 쓴다.
 - 질문 유형은 현재 레벨의 후보(levels.json) 안에서 LLM이 고른다. 후보 밖이면 Pydantic 검증 실패 → 다음 모델.
 - 질문에 한글이 섞이면 검증 실패로 본다(영어 질문만).
+- topic_keywords: 질문 속 주제 단어 1~3개(영어). 출력 가드레일(guardrails.py)이 질문에 실제로 있는지 확인한다.
 """
 
 from typing import Literal
@@ -28,6 +29,21 @@ class _QuestionBase(BaseModel):
         if detect_korean(value)["korean_words"]:
             raise ValueError("질문에 한글이 들어 있습니다")
         return value.strip()
+
+    topic_keywords: list[str] = Field(
+        min_length=1, max_length=3,
+        description="1-3 English words or short phrases, copied from the question, that show the assigned topic",
+    )
+
+    @field_validator("topic_keywords")
+    @classmethod
+    def _keywords_english(cls, value: list[str]) -> list[str]:
+        value = [v.strip() for v in value if v.strip()]
+        if not value:
+            raise ValueError("주제 키워드가 비어 있습니다")
+        if any(detect_korean(v)["korean_words"] for v in value):
+            raise ValueError("주제 키워드에 한글이 들어 있습니다")
+        return value
 
 
 def question_schema(question_types: list[str]) -> type[BaseModel]:

@@ -60,7 +60,8 @@ def generate_feedback(
             answer=wrap_answer(answer),
         ),
         schema=feedback_schema(needs_translation),
-        metadata={"node": "feedback_agent", "prompt": PROMPT.ref, **(metadata or {})},
+        # needs_translation: 출력 가드레일(guardrails.py)이 번역 누락을 확인할 때 쓴다
+        metadata={"node": "feedback_agent", "prompt": PROMPT.ref, **(metadata or {}), "needs_translation": needs_translation},
     )
     alternatives = [a.strip() for a in out.alternatives if a.strip()]
     if not alternatives:
