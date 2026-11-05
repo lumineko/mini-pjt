@@ -56,12 +56,12 @@ flowchart TD
 | `src/opic/agents/scorer.py` | Scorer Agent (루브릭 항목 점수만) | llm, data/rubric.json |
 | `src/opic/agents/feedback.py` | Feedback Agent (교정, 대체 문장, 한글 구간 번역) | tools.korean, llm |
 | `src/opic/tools/survey.py` | `load_survey_file()`, `pick_default_topic()` | opic_survey.md, data/default_topics.json |
-| `src/opic/tools/korean.py` | `detect_korean(text)` → `{ratio, spans}` | - |
+| `src/opic/tools/korean.py` | `detect_korean(text)` → `{ratio, spans, korean_words, total_words}`, `count_words(text)`. 비율 = 한글이 들어간 단어 / 전체 단어(글자가 있는 공백 단위 덩어리). spans는 연속 한글 묶음(영문 글자 없이 공백·문장부호·숫자만 사이에 있으면 합침) | state |
 | `src/opic/tools/level.py` | `get_level_guide(level)`, `get_previous_questions(state)` | data/levels.json |
 | `src/opic/rules/scoring.py` | 가중 합산, 한글 감점, 등급 구간, IL 미달, 출제 레벨+1 상한, 목표 달성 여부, 등급 순서값 평균 (순수 함수) | data/rubric.json |
 | `src/opic/rules/difficulty.py` | 3문항 평균 등급과 목표 비교, 한 단계 조정 제안, AL·IL 경계 (순수 함수) | data/levels.json |
 | `src/opic/rules/topic.py` | `assign_topics(survey_items, survey_answers, n=5)`. `kind=topic` 문항의 선택만 설문 순서대로 펼쳐 순환 배정 (순수 함수) | - |
-| `src/opic/rules/validation.py` | `validate_answer(text, min_words)` (순수 함수) | data/rubric.json |
+| `src/opic/rules/validation.py` | `validate_answer(text, min_words)` (순수 함수, 단어 수는 `tools.korean.count_words`로 셈, 한글 단어 포함) | tools.korean, data/rubric.json |
 | `src/opic/rules/summary.py` | 세션 요약 계산 (순수 함수) | rules.scoring |
 | `src/opic/storage.py` | 세션 JSON 저장, 목록, 조회 | data/history/ |
 | `src/opic/llm.py` | **모든 LLM 호출의 단일 진입점** (에이전트는 Bedrock을 직접 호출하지 않음). Bedrock 클라이언트, 재시도·폴백 체인, 구조화 출력, 호출 로깅, 트레이스 메타데이터 전달, pre/post 훅 (§13) | langchain-aws, config |
