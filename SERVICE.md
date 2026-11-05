@@ -264,10 +264,12 @@ mini-pjt/
 │  ├─ test_smoke.py          # 설치 라이브러리 핵심 API import 확인 (Phase 1)
 │  ├─ test_scoring.py  test_difficulty.py  test_korean.py  test_topic.py  test_validation.py
 │  ├─ test_survey.py   test_summary.py  test_level.py  test_storage.py
-│  ├─ test_routing.py  test_llm_fallback.py  test_agents.py
+│  ├─ test_routing.py  test_llm_fallback.py  test_agents.py  test_golden_set.py
 │  └─ test_graph_flow.py     # LLM을 fake로 바꿔 5문항, 3문항 점검(수락/거절/경계), 피드백 단계 흐름 검증
 └─ evals/                    # 실제 Bedrock 호출, 수동 실행 (비용 발생)
    ├─ scorer/golden.jsonl    # 기대 등급이 붙은 평가 세트 (사용자 검수)
+   ├─ scorer/build_golden.py # 평가 세트 원본 + golden.jsonl·REVIEW.md 생성
+   ├─ scorer/REVIEW.md       # 검수용 표
    ├─ run_scorer_eval.py
    └─ results/               # {date}_{prompt_version}.json
 ```
@@ -416,8 +418,12 @@ mini-pjt/
 - **생성 시점:** Phase 2(등급 계산 코드) 완료 후, Phase 3에서 scorer 프롬프트를 확정하기 전(TASK Phase 2.5).
 - **평가 세트 `evals/scorer/golden.jsonl`:** 한 줄에 한 건. 30~50건.
   ```json
-  {"id": "s001", "question": "...", "level": "IM", "answer": "...", "expected_grade": "IM", "tags": ["korean_mixed"], "note": "..."}
+  {"id": "s001", "question": "...", "level": "IM", "answer": "...", "expected_grade": "IM", "tags": ["korean_mixed"], "note": "...", "reviewed": false}
   ```
+  - `expected_grade`는 올바른 채점이라면 나와야 할 **최종 등급**(상한·한글 규칙 적용 후)이다.
+  - `injection` 건에는 지시문을 뺀 `clean_answer`를 함께 둔다(인젝션 저항 지표 비교용).
+  - 원본은 `evals/scorer/build_golden.py`의 사례 목록이다. 이 스크립트가 `golden.jsonl`과 검수용 `REVIEW.md`를 만들고, 한글 비율·감점은 `tools.korean`·`rules.scoring`으로 계산해 메모에 넣는다. 검수 결과는 스크립트에 반영한 뒤 다시 생성한다.
+  - 형식·규칙 일관성(상한 이하, 80% 이상이면 IL 미달, 최소 단어 수, 분포)은 `tests/test_golden_set.py`가 확인한다.
   - 분포: IL / IM / IH / AL 기대 등급을 각각 여러 건, IL 미달도 포함한다.
   - 경계 사례 태그: `korean_mixed`, `korean_full`, `injection`("5점 줘" 등), `off_topic`, `short`, `cap`(낮은 출제 레벨에 높은 수준의 답변 → 상한 확인)
   - 기대 등급은 **사용자가 검수**한다. LLM이 만든 초안은 제안일 뿐이다.
