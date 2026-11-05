@@ -48,7 +48,7 @@ flowchart TD
 | 모듈 | 책임 | 의존 |
 |------|------|------|
 | `src/opic/app.py` | Streamlit 화면: 설문, 레벨, 문항, 피드백, 조정 확인, 요약, 기록 열람 | graph, storage |
-| `src/opic/graph.py` | StateGraph 조립, 체크포인터, `start_session` / `resume` / `get_state` | 모든 노드 |
+| `src/opic/graph.py` | StateGraph 조립(`NODES` 14개, `FIXED_EDGES`, routing.CONDITIONAL_EDGES), HITL·파이썬 노드, 입력 처리 순수 함수(`apply_survey_submission`, `apply_answer_submission`, `build_item`), 체크포인터, `start_session` / `resume` / `retry` / `get_state` / `current_payload` | 모든 노드 |
 | `src/opic/state.py` | `SessionState`, `ItemResult`, `Pending` 등 타입 정의 | - |
 | `src/opic/routing.py` | 분기 함수 5개 `route_after_survey` / `route_after_answer` / `route_after_feedback` / `route_after_check` / `route_after_confirm` (State → 다음 노드 이름, 순수 함수), 노드 이름 상수, `CONDITIONAL_EDGES`(출발 노드 → 함수·가능한 도착 노드) | state, rules.difficulty |
 | `src/opic/agents/survey.py` | Survey Agent. `generate_fallback_survey(topic)`, 노드 `run(state, rng)` (파일 파싱, 없으면 LLM fallback 생성) | tools.survey, llm |
@@ -172,6 +172,7 @@ HTTP API는 없다. Streamlit이 같은 프로세스 안에서 함수를 호출�
 | `resume(session_id, value)` | `Command(resume=value)`로 재개 → 다음 interrupt 또는 종료까지 | 아래 kind별 값 | `interrupt_payload \| final_state` |
 | `retry(session_id)` | 오류 후 마지막 체크포인트부터 재실행 (`graph.invoke(None, config)`) | session_id | `interrupt_payload \| final_state` |
 | `get_state(session_id)` | 체크포인터의 현재 state 조회 | session_id | SessionState |
+| `current_payload(session_id)` | 화면을 다시 그릴 때 지금 기다리는 interrupt 값 | session_id | `interrupt_payload \| None` |
 | `storage.list_sessions()` | 기록 목록 | - | [{session_id, date, initial_level, final_level, avg_grade}] |
 | `storage.load_session(id)` | 기록 상세 | session_id | 저장된 세션 JSON |
 
@@ -181,6 +182,13 @@ HTTP API는 없다. Streamlit이 같은 프로세스 안에서 함수를 호출�
 | `answer` | 질문, 입력창, (answer_error가 있으면) 오류 안내 | 답변 텍스트 |
 | `feedback` | 항목별 점수, 등급, 달성 여부, 교정(없으면 "교정 사항 없음"), 대체 문장, 번역·감점 내역, "다음 문제"/"결과 보기" 버튼 | `True` |
 | `adjust` | 3문항 평균 등급, 제안 레벨, 예/아니오 | `bool` |
+
+interrupt 값(payload)의 키 (`kind` 공통):
+- `survey`: `notice`, `source`, `items`, `levels`, `error`
+- `answer`: `item_index`(1부터), `total`(5), `level`, `question`, `question_type`, `min_words`, `error`
+- `feedback`: `item_index`, `total`, `item`(ItemResult), `is_last`
+- `adjust`: `average_grade`, `current_level`, `proposal`
+- 세션이 끝나면 API는 `{"kind": "done", "session_id", "summary"}`를 돌려준다.
 
 **Streamlit 연동**
 - 컴파일된 그래프와 `MemorySaver`는 `@st.cache_resource`로 프로세스당 1개만 유지한다. 화면이 다시 그려져도 체크포인터가 사라지지 않는다.

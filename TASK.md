@@ -45,7 +45,7 @@
 
 ### Phase 4. 그래프
 - [x] `routing.py` 분기 함수 5개 (SERVICE §3) + `tests/test_routing.py`
-- [ ] `graph.py` 고정 엣지·조건 분기 조립, `record_item` 노드, HITL interrupt, `start_session`/`resume`/`get_state`
+- [x] `graph.py` 고정 엣지·조건 분기 조립, `record_item` 노드, HITL interrupt, `start_session`/`resume`/`get_state`
 - [ ] `tests/test_graph_flow.py` (fake LLM으로 5문항, 문항 안 순서 scorer → score_and_grade → feedback, 3문항 점검, 조정 흐름)
 
 ### Phase 5. UI·마무리
@@ -94,3 +94,4 @@
 | 2026-11-05 | Phase 3: scorer 실제 평가 (Phase 3 완료) | 버그 수정: .env의 빈 `AWS_PROFILE=`/`AWS_SESSION_TOKEN=`을 boto3가 직접 읽어 실패 → `config.drop_blank_aws_vars`로 제거(테스트 2개). 평가 scorer@1 · Sonnet 4.5: 정확 61.1%, ±1 100%, 일관성 0.044, 인젝션 100%, 한글 100% → 목표 모두 통과. 불일치 14건: IH 수준 답변을 5점(AL)으로 주는 과대 채점 6건·IM→IH 3건, 주제 이탈 2건 IM(task 1이어도 다른 항목 높음), 한 단계 낮음 3건. 결과 `evals/results/20261105-101700_scorer@1.json`(커밋 제외) | Phase 4 `routing.py` (scorer v2 튜닝은 사용자 결정) |
 | 2026-11-05 | Phase 3: scorer 프롬프트 v2 | 사용자 결정으로 프롬프트만 개선(루브릭·파이썬 규칙 변경 없음): 5점은 '고급 기능'이 보일 때만, 오류 없음만으로는 4점·단순 문장은 3점, 항목별 5점·4점 기준 명시, 항목마다 따로 판단. 결과 scorer@2: 정확 61.1%→**83.3%**, ±1 100%, 일관성 0.044→0.000, 인젝션·한글 100%. IH→AL 과대 6건·주제 이탈 2건 해소. 남은 6건은 경계 근처(IM→IH 3건 가중 3.75~4.25, 한 단계 낮음 3건). 결과 `evals/results/20261105-102159_scorer@2.json` | Phase 4 `routing.py` |
 | 2026-11-05 | Phase 4: `routing.py` | 분기 함수 5개(SERVICE §3 표대로) + 방어 처리(필요 값 비면 같은 입력 노드, 5문항 이상 요약, 조정 중복 적용 금지), 노드 이름 상수, `CONDITIONAL_EDGES`(반환 타입과 도착 노드 일치 테스트), 분기 로그. SERVICE §2·§3 반영. 테스트 28개 추가, 전체 374개 통과 | `graph.py` 조립 |
+| 2026-11-05 | Phase 4: `graph.py` | 노드 14개·고정 엣지 10개·조건 분기 5개 조립(슈퍼바이저 없음). HITL 4종 interrupt(재개 시 노드 재실행되므로 입력 처리는 순수 함수 `apply_*`로 분리), 파이썬 노드(score_and_grade, record_item, check_difficulty, apply_level, summarize, save_session). API `start_session`/`resume`/`retry`/`get_state`/`current_payload`, 세션 id는 저장 규칙 호환. SERVICE §2·§4(payload 키) 반영. `tests/test_graph.py` 20개 추가, 전체 394개 통과 | `tests/test_graph_flow.py` |
