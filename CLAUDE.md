@@ -24,6 +24,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 테스트: `.venv\Scripts\python -m pytest -q` (`pytest.ini`: `testpaths=tests`, `pythonpath=src`, 실제 LLM 호출 없음)
 - 테스트 하나만: `.venv\Scripts\python -m pytest tests/test_smoke.py::test_langgraph_apis -q`
 - 평가(`evals/`)는 실제 Bedrock을 호출하므로 pytest와 별도로 수동 실행한다.
+  - 채점 평가: `.venv\Scripts\python evals\run_scorer_eval.py` (키 없이 흐름만 확인: `--fake`)
+  - 평가 세트 재생성(검수 반영 후): `.venv\Scripts\python evals\scorer\build_golden.py`
 
 예정 구조 (상세는 SERVICE.md §2, §9):
 - `src/opic/` — `app.py`(Streamlit), `graph.py`(고정 순서 워크플로), `routing.py`(Python 분기 함수, 슈퍼바이저 없음), `agents/`, `tools/`, `rules/`(순수 함수 판정 로직), `llm.py`(Bedrock 폴백)

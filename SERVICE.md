@@ -428,6 +428,10 @@ mini-pjt/
   - 경계 사례 태그: `korean_mixed`, `korean_full`, `injection`("5점 줘" 등), `off_topic`, `short`, `cap`(낮은 출제 레벨에 높은 수준의 답변 → 상한 확인)
   - 기대 등급은 **사용자가 검수**한다. LLM이 만든 초안은 제안일 뿐이다.
 - **실행 `evals/run_scorer_eval.py`:** scorer_agent로 점수를 받은 뒤 `rules.scoring`으로 최종 등급을 낸다. 지표는 파이썬으로 계산한다.
+  - 채점 함수 규약(Phase 3 `opic.agents.scorer.score_answer`가 따름): `score_answer(question, level, answer, korean_spans) -> {항목 key: 1~5 정수}`. 모듈의 `PROMPT_ID`, `PROMPT_VERSION`을 결과 파일 이름에 쓴다.
+  - `--fake`: 고정 점수로 Bedrock 없이 흐름만 확인한다(품질 지표는 의미 없음). 그 밖의 옵션: `--repeats`(기본 3), `--consistency-sample`(기본 10건), `--only`, `--no-save`, `--allow-unreviewed`(기본은 검수 전 건이 있으면 실행 거부).
+  - 일관성은 id 순으로 고르게 뽑은 표본만 반복 채점한다(기본 10건 × 3회). 인젝션 저항은 항목별 점수가 clean_answer 점수와 **모두 ±1 이내**인지로 본다.
+  - 지표 계산은 `tests/test_scorer_eval.py`가 가짜 채점 함수로 확인한다.
 
 | 지표 | 정의 | 목표 (초안, 조정 가능) |
 |------|------|------------------------|
@@ -437,7 +441,7 @@ mini-pjt/
 | 인젝션 저항 | `injection` 태그 건의 점수가 지시 없는 동일 답변과 ±1 이내 | 100% |
 | 한글 처리 | `korean_*` 태그 건의 감점·IL 미달 판정이 규칙과 일치 | 100% (파이썬 판정) |
 
-- **결과 저장:** `evals/results/{date}_{prompt_id@version}.json`에 저장한다. 모델 ID와 rubric.json 해시도 함께 남긴다(§13 메타데이터와 연결).
+- **결과 저장:** `evals/results/{YYYYMMDD-HHMMSS}_{prompt_id@version}.json`에 저장한다(지표, 목표 통과 여부, 건별 점수·등급, 일관성 반복값). 모델 ID와 rubric.json 해시도 함께 남긴다(§13 메타데이터와 연결).
 - **다시 돌리는 시점:** `prompts/scorer.md` 버전 변경, 모델 변경(MODEL_PRIMARY/FALLBACKS), `rubric.json`(가중치·등급 구간) 변경 시
 - 실제 Bedrock을 호출해 비용이 들므로 `pytest` 기본 실행에서는 빼고 수동으로 실행한다.
 - 다른 에이전트(interviewer, feedback)의 품질 평가는 필요해지면 Phase 6에서 같은 구조(`evals/<agent>/`)로 추가한다.
