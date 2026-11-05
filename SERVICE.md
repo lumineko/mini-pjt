@@ -47,7 +47,7 @@ flowchart TD
 ## 2. 모듈 구성
 | 모듈 | 책임 | 의존 |
 |------|------|------|
-| `src/opic/app.py` | Streamlit 화면: 설문, 레벨, 문항, 피드백, 조정 확인, 요약, 기록 열람 | graph, storage |
+| `src/opic/app.py` | Streamlit 화면. 사이드바 메뉴(연습 / 지난 기록) + 진행 상황·'새 연습 시작'. 연습은 interrupt kind별 화면(설문, 문항, 피드백, 조정 확인, 결과), LLM 실패 시 '다시 시도'. 실행 `python -m streamlit run src/opic/app.py` | graph, storage |
 | `src/opic/graph.py` | StateGraph 조립(`NODES` 14개, `FIXED_EDGES`, routing.CONDITIONAL_EDGES), HITL·파이썬 노드, 입력 처리 순수 함수(`apply_survey_submission`, `apply_answer_submission`, `build_item`), 체크포인터, `start_session` / `resume` / `retry` / `get_state` / `current_payload` | 모든 노드 |
 | `src/opic/state.py` | `SessionState`, `ItemResult`, `Pending` 등 타입 정의 | - |
 | `src/opic/routing.py` | 분기 함수 5개 `route_after_survey` / `route_after_answer` / `route_after_feedback` / `route_after_check` / `route_after_confirm` (State → 다음 노드 이름, 순수 함수), 노드 이름 상수, `CONDITIONAL_EDGES`(출발 노드 → 함수·가능한 도착 노드) | state, rules.difficulty |
@@ -280,7 +280,8 @@ mini-pjt/
 │  ├─ test_scoring.py  test_difficulty.py  test_korean.py  test_topic.py  test_validation.py
 │  ├─ test_survey.py   test_summary.py  test_level.py  test_storage.py
 │  ├─ test_routing.py  test_llm_fallback.py  test_agents.py  test_golden_set.py
-│  └─ test_graph_flow.py     # LLM을 fake로 바꿔 5문항, 3문항 점검(수락/거절/경계), 피드백 단계 흐름 검증
+│  ├─ test_graph_flow.py     # LLM을 fake로 바꿔 5문항, 3문항 점검(수락/거절/경계), 피드백 단계 흐름 검증
+│  └─ test_app.py            # Streamlit AppTest(streamlit 내장) + fake LLM으로 화면 조작 검증
 └─ evals/                    # 실제 Bedrock 호출, 수동 실행 (비용 발생)
    ├─ scorer/golden.jsonl    # 기대 등급이 붙은 평가 세트 (사용자 검수)
    ├─ scorer/build_golden.py # 평가 세트 원본 + golden.jsonl·REVIEW.md 생성

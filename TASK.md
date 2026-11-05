@@ -49,7 +49,7 @@
 - [x] `tests/test_graph_flow.py` (fake LLM으로 5문항, 문항 안 순서 scorer → score_and_grade → feedback, 3문항 점검, 조정 흐름)
 
 ### Phase 5. UI·마무리
-- [ ] `app.py` Streamlit (설문, 레벨, 문항·피드백, 조정 확인, 요약, 기록)
+- [x] `app.py` Streamlit (설문, 레벨, 문항·피드백, 조정 확인, 요약, 기록)
 - [ ] 실제 Bedrock으로 E2E 확인 (PRD 성공 기준 1~10)
 - [ ] CLAUDE.md 실행·테스트 명령 갱신
 
@@ -96,3 +96,4 @@
 | 2026-11-05 | Phase 4: `routing.py` | 분기 함수 5개(SERVICE §3 표대로) + 방어 처리(필요 값 비면 같은 입력 노드, 5문항 이상 요약, 조정 중복 적용 금지), 노드 이름 상수, `CONDITIONAL_EDGES`(반환 타입과 도착 노드 일치 테스트), 분기 로그. SERVICE §2·§3 반영. 테스트 28개 추가, 전체 374개 통과 | `graph.py` 조립 |
 | 2026-11-05 | Phase 4: `graph.py` | 노드 14개·고정 엣지 10개·조건 분기 5개 조립(슈퍼바이저 없음). HITL 4종 interrupt(재개 시 노드 재실행되므로 입력 처리는 순수 함수 `apply_*`로 분리), 파이썬 노드(score_and_grade, record_item, check_difficulty, apply_level, summarize, save_session). API `start_session`/`resume`/`retry`/`get_state`/`current_payload`, 세션 id는 저장 규칙 호환. SERVICE §2·§4(payload 키) 반영. `tests/test_graph.py` 20개 추가, 전체 394개 통과 | `tests/test_graph_flow.py` |
 | 2026-11-05 | Phase 4: `tests/test_graph_flow.py` (Phase 4 완료) | 가짜 LLM으로 5문항 세션 끝까지: payload 순서, LLM 호출 순서(interviewer→scorer→feedback 고정), 피드백에 파이썬 등급 전달, 주제 배정 반영, 조정 상향 수락(4·5번 새 레벨·상한)·거절·하향·AL/IL/동일 경계·1회만, 짧은 답변 재입력(LLM 호출 없음), 전부 한글 IL 미달+번역, LLM 실패 후 retry 이어서, 미완료 미저장, 세션 분리, fallback 설문. 수정 없이 통과. 18개 추가, 전체 412개 통과 | Phase 5 `app.py` |
+| 2026-11-05 | Phase 5: `app.py` | 사용자 결정: 사이드바 메뉴(연습/지난 기록, 진행 상황, 새 연습 시작). 화면: 설문(profile 라디오·topic 체크박스 3열·★ 표시·안내문·레벨), 문항(UI 선검증), 피드백(등급·달성·상한 안내·루브릭 표·감점·교정 or "교정 사항 없음"·대체 문장·번역), 조정 확인, 결과, 기록 목록·상세. LLM 실패 시 다시 시도. `tests/test_app.py`(Streamlit 내장 AppTest + fake LLM) 9개, 전체 421개 통과. 실제 서버 기동(health ok) 확인 | Bedrock E2E 확인 |
