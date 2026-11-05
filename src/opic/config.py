@@ -28,6 +28,9 @@ DEFAULT_SURVEY_FILE = "opic_survey.md"
 DEFAULT_HISTORY_DIR = "data/history"
 DEFAULT_LOG_LEVEL = "INFO"
 _LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+# boto3가 os.environ에서 직접 읽는 인증 변수. 빈 값이 남아 있으면 boto3가 실패한다
+# (예: AWS_PROFILE="" → "The config profile () could not be found").
+AWS_CREDENTIAL_VARS = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_PROFILE")
 
 
 class ConfigError(ValueError):
@@ -96,6 +99,14 @@ def _parse_log_level(value: str | None) -> str:
     return level
 
 
+def drop_blank_aws_vars(environ: "os._Environ[str] | dict[str, str]") -> list[str]:
+    """빈 AWS 인증 변수를 지운다(.env.example을 그대로 복사한 경우 대비). 지운 이름 목록을 돌려준다."""
+    removed = [name for name in AWS_CREDENTIAL_VARS if name in environ and not environ[name].strip()]
+    for name in removed:
+        del environ[name]
+    return removed
+
+
 def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     """설정을 읽는다.
 
@@ -104,6 +115,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     """
     if env is None:
         load_dotenv(ROOT_DIR / ".env", override=False)
+        drop_blank_aws_vars(os.environ)
         env = os.environ
 
     return Settings(

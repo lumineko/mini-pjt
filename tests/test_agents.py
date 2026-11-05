@@ -159,7 +159,7 @@ def test_scorer_all_models_fail_raises(fake_llm):
 def test_score_answer_contract_and_prompt_constants(fake_llm):
     fake_llm.push(SCORES)
     assert scorer.score_answer("Q?", "IH", "I like jogging very much.", []) == SCORES
-    assert (scorer.PROMPT_ID, scorer.PROMPT_VERSION) == ("scorer", 1)
+    assert scorer.PROMPT_ID == "scorer" and scorer.PROMPT_VERSION == scorer.PROMPT.version >= 1
 
 
 def test_scorer_works_with_eval_runner(fake_llm):
@@ -169,7 +169,7 @@ def test_scorer_works_with_eval_runner(fake_llm):
     ev = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(ev)
     fn, prompt = ev.load_real_scorer()
-    assert fn is scorer.score_answer and prompt == "scorer@1"
+    assert fn is scorer.score_answer and prompt == scorer.PROMPT.ref
 
 
 # ── Feedback ───────────────────────────────────────────────────────

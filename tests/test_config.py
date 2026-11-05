@@ -94,6 +94,25 @@ def test_env_var_takes_precedence_over_dotenv(tmp_path, monkeypatch):
     assert s.log_level == "WARNING"
 
 
+def test_drop_blank_aws_vars():
+    environ = {"AWS_PROFILE": "", "AWS_SESSION_TOKEN": "  ", "AWS_ACCESS_KEY_ID": "id", "OTHER": ""}
+    assert sorted(config.drop_blank_aws_vars(environ)) == ["AWS_PROFILE", "AWS_SESSION_TOKEN"]
+    assert environ == {"AWS_ACCESS_KEY_ID": "id", "OTHER": ""}
+
+
+def test_blank_aws_vars_from_dotenv_are_removed(tmp_path, monkeypatch):
+    # .env.example을 그대로 복사한 상황: 빈 AWS_PROFILE이 boto3를 깨뜨리면 안 된다
+    (tmp_path / ".env").write_text("AWS_PROFILE=\nAWS_SESSION_TOKEN=\n", encoding="utf-8")
+    monkeypatch.setattr(config, "ROOT_DIR", tmp_path)
+    for name in ("AWS_PROFILE", "AWS_SESSION_TOKEN"):
+        monkeypatch.setenv(name, "")  # 원래 상태 기록용
+        monkeypatch.delenv(name)
+    s = load_settings()
+    import os
+    assert "AWS_PROFILE" not in os.environ and "AWS_SESSION_TOKEN" not in os.environ
+    assert s.aws_profile is None
+
+
 def test_setup_logging_writes_file_and_no_duplicate_handlers(tmp_path):
     s = load_settings({"LOG_LEVEL": "INFO"})
     setup_logging(s, log_dir=tmp_path)
