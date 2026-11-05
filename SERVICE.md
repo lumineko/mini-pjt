@@ -207,17 +207,21 @@ HTTP API는 없다. Streamlit이 같은 프로세스 안에서 함수를 호출�
 ## 7. 모델 운용 전략
 - 기본 모델: `global.anthropic.claude-sonnet-4-5-20250929-v1:0`
 - 폴백 모델: `global.anthropic.claude-haiku-4-5-20251001-v1:0`
-- **재시도:** 스로틀링(`ThrottlingException`)이나 5xx가 나면 지수 백오프(1s, 2s)로 모델당 최대 2회 재시도한 뒤 다음 모델로 넘어간다. 구조화 출력 파싱·검증에 실패해도 다음 모델로 넘어간다.
-- **구현:** `llm.get_model(role)`이 `primary.with_retry(...).with_fallbacks([fallback])` 체인을 반환한다.
+- **재시도:** 스로틀링·일시 장애(`ThrottlingException`, `ServiceUnavailableException`, `InternalServerException`, `ModelNotReadyException`, `ModelTimeoutException` 등)나 5xx, 네트워크 타임아웃이 나면 지수 백오프(1s, 2s)로 모델당 최대 2회 재시도한 뒤 다음 모델로 넘어간다.
+- 구조화 출력 파싱·검증 실패, after_call 가드레일 위반, 그 밖의 오류(권한·잘못된 요청 등)는 재시도 없이 바로 다음 모델로 넘어간다.
+- **구현:** `llm.invoke_llm(role, messages, schema=None, metadata=None)`이 모델 목록(`Settings.models`)을 순서대로 시도하는 루프를 직접 돈다. 재시도 횟수·폴백 여부를 정확히 로깅하고 구조화 출력 실패를 구분하기 위해 langchain `with_retry/with_fallbacks` 대신 쓴다. botocore 자체 재시도는 끈다(`total_max_attempts=1`).
+- 테스트는 `factory`(모델 생성 함수)와 `sleep`을 주입해 Bedrock 없이 돌린다(`tests/test_llm_fallback.py`). 앱 전체를 가짜 모델로 바꿀 때는 `llm.set_model_factory()`를 쓴다.
 - **모두 실패할 때:** 예외를 UI로 올리고, 체크포인터 state는 유지되어 `retry`로 같은 단계부터 다시 실행한다.
 - 모델 ID는 `.env`(`MODEL_PRIMARY`, `MODEL_FALLBACKS`)로 바꿀 수 있다.
 
-| 용도 | 1순위 모델 | 폴백 모델 | 비고 |
-|------|-----------|-----------|------|
-| survey (fallback 설문 생성) | Claude Sonnet 4.5 (global) | Claude Haiku 4.5 (global) | 파일이 없을 때만 |
-| interviewer (질문 생성) | Claude Sonnet 4.5 (global) | Claude Haiku 4.5 (global) | |
-| scorer (루브릭 점수) | Claude Sonnet 4.5 (global) | Claude Haiku 4.5 (global) | temperature 0 |
-| feedback (교정, 대체, 번역) | Claude Sonnet 4.5 (global) | Claude Haiku 4.5 (global) | |
+| 용도 | 1순위 모델 | 폴백 모델 | temperature / max_tokens (초안) | 비고 |
+|------|-----------|-----------|------|------|
+| survey (fallback 설문 생성) | Claude Sonnet 4.5 (global) | Claude Haiku 4.5 (global) | 0.7 / 1024 | 파일이 없을 때만 |
+| interviewer (질문 생성) | Claude Sonnet 4.5 (global) | Claude Haiku 4.5 (global) | 0.7 / 512 | |
+| scorer (루브릭 점수) | Claude Sonnet 4.5 (global) | Claude Haiku 4.5 (global) | 0.0 / 512 | 일관성 우선 |
+| feedback (교정, 대체, 번역) | Claude Sonnet 4.5 (global) | Claude Haiku 4.5 (global) | 0.3 / 2048 | |
+
+용도별 값은 `llm.ROLE_CONFIG`에 있다.
 
 ## 8. 설정 / 환경변수
 모든 키·자격 증명은 `.env`에서 읽는다 (`.env.example` 제공).
@@ -378,10 +382,10 @@ mini-pjt/
 
 | # | 연결 지점 | 구현 시 규칙 |
 |---|-----------|--------------|
-| 1 | 단일 진입점 | 모든 LLM 호출은 `llm.py`(`get_model(role)` → `invoke_llm(...)`)를 거친다. 다른 모듈에서 `ChatBedrockConverse`나 boto3로 직접 호출하지 않는다. |
-| 2 | 호출 메타데이터 | 호출마다 RunnableConfig `metadata`/`tags`에 `session_id`, `node`, `item_index`, `prompt_id@version`, `role`을 넣는다. 그래프 실행 config(`thread_id=session_id`)에서 이어받는다. |
+| 1 | 단일 진입점 | 모든 LLM 호출은 `llm.invoke_llm(role, messages, schema, metadata)`를 거친다. 다른 모듈에서 `ChatBedrockConverse`나 boto3로 직접 호출하지 않는다. |
+| 2 | 호출 메타데이터 | 호출마다 RunnableConfig `metadata`/`tags`에 `session_id`, `node`, `item_index`, `prompt`(`id@version`), `role`과 `llm.py`가 붙이는 `model_id`, `attempt`, `fallback`을 넣는다. 그래프 실행 config(`thread_id=session_id`)에서 이어받는다. |
 | 3 | 프롬프트 버전 | `prompts/*.md` 맨 위에 `id`, `version` 헤더를 둔다. 프롬프트를 바꾸면 version을 올린다. 로더가 헤더를 읽어 메타데이터 2번에 넣는다. |
-| 4 | pre/post 훅 | `llm.py`에 `before_call(role, messages, metadata)`와 `after_call(role, output, metadata)` 훅 목록을 둔다. 처음에는 비어 있다(동작 없음). 가드레일과 트레이스 기록기는 여기에 등록한다. |
+| 4 | pre/post 훅 | `llm.before_call_hooks`(`(role, messages, metadata)`)와 `llm.after_call_hooks`(`(role, output, metadata)`) 목록. 처음에는 비어 있다(동작 없음). 가드레일과 트레이스 기록기는 여기에 등록한다. after 훅이 `GuardrailViolation`을 던지면 다음 모델로 넘어간다. |
 
 **이미 있는 가드레일** (유지): 고정 엣지 + 파이썬 분기(LLM이 흐름을 바꿀 수 없음), 답변 `<answer>` 격리(§3 보안), Pydantic 점수 범위 검증, 등급·감점·난이도 파이썬 판정, 최소 답변 길이 검증, 로깅(§11).
 
