@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT / "src"))
 RESULTS = ROOT / "evals" / "results"
 HISTORY = RESULTS / "e2e_history"
 os.environ["HISTORY_DIR"] = str(HISTORY)
+os.environ["TRACE_FILE"] = str(RESULTS / "e2e_traces.jsonl")
 os.environ["SURVEY_FILE"] = str(ROOT / "opic_survey.md")
 
 from opic.config import load_settings  # noqa: E402

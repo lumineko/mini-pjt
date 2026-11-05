@@ -27,6 +27,8 @@ DEFAULT_MAX_RETRIES = 2
 DEFAULT_SURVEY_FILE = "opic_survey.md"
 DEFAULT_HISTORY_DIR = "data/history"
 DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_TRACE_FILE = "logs/traces.jsonl"
+_TRACE_OFF = {"off", "none", "false", "0"}
 _LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 # boto3가 os.environ에서 직접 읽는 인증 변수. 빈 값이 남아 있으면 boto3가 실패한다
 # (예: AWS_PROFILE="" → "The config profile () could not be found").
@@ -48,6 +50,7 @@ class Settings:
     survey_file: Path
     history_dir: Path
     log_level: str
+    trace_file: Path | None = None  # None이면 트레이스를 남기지 않는다 (Phase 6)
 
     @property
     def models(self) -> tuple[str, ...]:
@@ -99,6 +102,13 @@ def _parse_log_level(value: str | None) -> str:
     return level
 
 
+def _parse_trace_file(value: str | None) -> Path | None:
+    """TRACE_FILE: 비면 기본 경로, off/none/false/0이면 끔."""
+    if value is not None and value.lower() in _TRACE_OFF:
+        return None
+    return _resolve_path(value or DEFAULT_TRACE_FILE)
+
+
 def drop_blank_aws_vars(environ: "os._Environ[str] | dict[str, str]") -> list[str]:
     """빈 AWS 인증 변수를 지운다(.env.example을 그대로 복사한 경우 대비). 지운 이름 목록을 돌려준다."""
     removed = [name for name in AWS_CREDENTIAL_VARS if name in environ and not environ[name].strip()]
@@ -128,6 +138,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         survey_file=_resolve_path(_get(env, "SURVEY_FILE") or DEFAULT_SURVEY_FILE),
         history_dir=_resolve_path(_get(env, "HISTORY_DIR") or DEFAULT_HISTORY_DIR),
         log_level=_parse_log_level(_get(env, "LOG_LEVEL")),
+        trace_file=_parse_trace_file(_get(env, "TRACE_FILE")),
     )
 
 

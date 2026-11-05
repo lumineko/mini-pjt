@@ -54,7 +54,7 @@
 - [x] CLAUDE.md 실행·테스트 명령 갱신
 
 ### Phase 6. 트레이스·가드레일 (SERVICE §13)
-- [ ] 트레이스 저장 방식 결정 (로컬 JSONL / 외부 도구, 외부 도구는 사용자 승인 필요) 및 after_call 훅 구현
+- [x] 트레이스 저장 방식 결정 (로컬 JSONL / 외부 도구, 외부 도구는 사용자 승인 필요) 및 after_call 훅 구현
 - [ ] 출력 가드레일 post 훅 (언어 검사, 번역 누락, 주제 이탈)
 - [ ] Bedrock Guardrails 적용 여부 결정 및 guardrail_config 연결
 - [ ] PRD §6 비기능 요구사항에 트레이스·가드레일 항목 반영
@@ -99,3 +99,4 @@
 | 2026-11-05 | Phase 5: `app.py` | 사용자 결정: 사이드바 메뉴(연습/지난 기록, 진행 상황, 새 연습 시작). 화면: 설문(profile 라디오·topic 체크박스 3열·★ 표시·안내문·레벨), 문항(UI 선검증), 피드백(등급·달성·상한 안내·루브릭 표·감점·교정 or "교정 사항 없음"·대체 문장·번역), 조정 확인, 결과, 기록 목록·상세. LLM 실패 시 다시 시도. `tests/test_app.py`(Streamlit 내장 AppTest + fake LLM) 9개, 전체 421개 통과. 실제 서버 기동(health ok) 확인 | Bedrock E2E 확인 |
 | 2026-11-05 | Phase 5: 실제 Bedrock E2E | `evals/run_e2e.py`(수동): AppTest로 app.py를 실제 Bedrock과 돌려 5문항 세션 완주(76s, 조정 질문 IM→IH 수락, 4·5번 IH 출제), 폴백(없는 기본 모델 → Haiku 자동 전환), 대체 설문(거주지, 보기 8개). PRD 성공 기준 1~10 + 추가 3개(질문 영어·배정 주제, 언어 규칙, 짧은 답변 화면 차단) **13/13 통과**. 답변 payload에 `topic` 추가(화면 표시, SERVICE §4). 기록은 evals/results/e2e_history(커밋 제외). 참고: 미리 써 둔 답변이 질문 세부와 어긋난 3·4·5번은 task 1~2점으로 낮게 채점됨(채점이 의도대로 동작) | CLAUDE.md 실행·테스트 명령 갱신 |
 | 2026-11-05 | Phase 5: CLAUDE.md 명령 갱신 (Phase 5 완료) | 개발 명령어(설치, .env, 앱 실행, 테스트 전체·하나, 평가 3종)와 코드 구조(한 문항 흐름, 모듈별 규칙: 판정은 rules/, LLM은 invoke_llm만, 프롬프트 version, HITL 재실행 주의, fake_llm fixture, 커밋 제외 목록)로 다시 씀. 문서의 명령 실제 실행 확인 | Phase 6 트레이스·가드레일 (사용자 결정 필요) |
+| 2026-11-05 | Phase 6: 트레이스 (로컬 JSONL) | 사용자 결정: 로컬 JSONL, 메타데이터+출력(입력·답변 원문 제외), 보존 제한 없음. `trace.py`(TraceRecorder·install·uninstall·read_traces, 시도 1번 = 한 줄, 잠금, 기록 실패는 경고만). `llm.py`에 `error_call_hooks` 추가(실패 시도도 기록, 예외 삼킴), 훅 metadata에 `elapsed_ms`. `TRACE_FILE`(기본 logs/traces.jsonl, off로 끔), app.py에서 설치, E2E는 evals/results에 따로. conftest에 훅 목록 복원 fixture. SERVICE §2·§8·§9·§11·§13 반영. `tests/test_trace.py` 13개, 전체 434개 통과 | 출력 가드레일 post 훅 |

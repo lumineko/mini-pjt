@@ -13,7 +13,7 @@ botocore 자체 재시도는 끈다(total_max_attempts=1). 재시도는 여기�
 
 확장 지점 (SERVICE §13, Phase 6에서 사용):
 - 호출 메타데이터: RunnableConfig metadata/tags에 role, model_id, attempt, session_id, node, item_index, prompt(id@version)
-- 훅: before_call_hooks / after_call_hooks (기본은 비어 있음)
+- 훅: before_call_hooks / after_call_hooks / error_call_hooks (기본은 비어 있음, 트레이스는 trace.install()로 등록)
 """
 
 import logging
@@ -145,8 +145,20 @@ def set_model_factory(factory: ModelFactory | None) -> None:
 # ── 훅 (SERVICE §13, 기본 비어 있음) ───────────────────────────────
 BeforeHook = Callable[[str, Sequence[Any], dict[str, Any]], None]
 AfterHook = Callable[[str, Any, dict[str, Any]], None]
+ErrorHook = Callable[[str, BaseException, dict[str, Any]], None]
 before_call_hooks: list[BeforeHook] = []
+# 출력 검사(GuardrailViolation을 던질 수 있음)를 앞에, 트레이스 기록기를 맨 끝에 둔다.
 after_call_hooks: list[AfterHook] = []
+# 시도 하나가 실패할 때마다 불린다(기록 전용). 여기서 난 예외는 로그만 남기고 무시한다.
+error_call_hooks: list[ErrorHook] = []
+
+
+def _run_error_hooks(role: str, exc: BaseException, meta: dict[str, Any]) -> None:
+    for hook in error_call_hooks:
+        try:
+            hook(role, exc, meta)
+        except Exception:  # noqa: BLE001 - 기록 실패가 호출 흐름을 바꾸면 안 된다
+            logger.exception("error_call 훅 실패: %r", hook)
 
 
 # ── 호출 ───────────────────────────────────────────────────────────
@@ -196,10 +208,12 @@ def invoke_llm(
                 output = runnable.invoke(list(messages), config={"metadata": meta, "tags": tags, "run_name": role})
                 if schema is not None and not isinstance(output, schema):
                     raise StructuredOutputError(f"{schema.__name__} 형식이 아닌 출력: {type(output).__name__}")
+                hook_meta = {**meta, "elapsed_ms": round((time.perf_counter() - started) * 1000)}
                 for hook in after_call_hooks:
-                    hook(role, output, meta)
+                    hook(role, output, hook_meta)
             except Exception as exc:  # noqa: BLE001 - 오류 종류별로 아래에서 분기
                 elapsed = time.perf_counter() - started
+                _run_error_hooks(role, exc, {**meta, "elapsed_ms": round(elapsed * 1000)})
                 attempts.append(Attempt(model_id, retry + 1, f"{type(exc).__name__}: {exc}"[:300]))
                 retryable = is_retryable(exc)
                 logger.warning(

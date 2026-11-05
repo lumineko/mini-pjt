@@ -18,6 +18,7 @@ if __package__ in (None, ""):  # `streamlit run src/opic/app.py`로 실행될 �
 import streamlit as st
 
 from opic import graph as g
+from opic import trace
 from opic.config import load_settings, setup_logging
 from opic.llm import LLMError
 from opic.rules.validation import validate_answer
@@ -29,7 +30,9 @@ RUBRIC_LABELS = {"grammar": "문법", "vocabulary": "어휘", "organization": "�
 
 @st.cache_resource
 def app_graph():
-    setup_logging(load_settings())
+    settings = load_settings()
+    setup_logging(settings)
+    trace.install(settings)
     return g.build_graph()
 
 

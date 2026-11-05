@@ -23,6 +23,7 @@ def question(i):
 def app(fake_llm, monkeypatch, tmp_path):
     monkeypatch.setenv("SURVEY_FILE", str(ROOT_DIR / "opic_survey.md"))
     monkeypatch.setenv("HISTORY_DIR", str(tmp_path / "history"))
+    monkeypatch.setenv("TRACE_FILE", str(tmp_path / "traces.jsonl"))
     st.cache_resource.clear()  # 테스트마다 새 그래프
     at = AppTest.from_file(APP, default_timeout=30)
     at.run()

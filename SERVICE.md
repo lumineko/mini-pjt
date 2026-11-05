@@ -65,7 +65,8 @@ flowchart TD
 | `src/opic/rules/validation.py` | `validate_answer(text, min_words)`(단어 수는 `tools.korean.count_words`, 한글 단어 포함), `validate_level(level)`, `validate_survey_answers(items, answers)`(profile 1개, topic 1개 이상, 보기에 있는 값만, 중복 금지). 통과 None / 실패 시 한국어 안내문 (순수 함수) | tools.korean, state |
 | `src/opic/rules/summary.py` | `summarize(items, initial_level, level_history)`: 문항별 등급, 평균 등급(순서값 평균 반올림), 시작·최종 레벨, 변경 여부. 정확히 5문항·이력 연속성 검증 (순수 함수) | rules.scoring, state(SESSION_ITEMS) |
 | `src/opic/storage.py` | `save_session(state, dir)`(완료 세션만, 임시 파일 후 교체), `load_session(id, dir)`, `list_sessions(dir)`(최신순, 깨진 파일 건너뜀). 기록 필드: session_id, started_at, survey_source, survey_answers, initial_level, current_level, level_history, items, summary, schema_version, saved_at. session_id는 `[A-Za-z0-9_-]`만 허용 | data/history/ |
-| `src/opic/llm.py` | **모든 LLM 호출의 단일 진입점** (에이전트는 Bedrock을 직접 호출하지 않음). Bedrock 클라이언트, 재시도·폴백 체인, 구조화 출력, 호출 로깅, 트레이스 메타데이터 전달, pre/post 훅 (§13) | langchain-aws, config |
+| `src/opic/llm.py` | **모든 LLM 호출의 단일 진입점** (에이전트는 Bedrock을 직접 호출하지 않음). Bedrock 클라이언트, 재시도·폴백 체인, 구조화 출력, 호출 로깅, 트레이스 메타데이터 전달, 훅 `before_call_hooks`/`after_call_hooks`/`error_call_hooks` (§13) | langchain-aws, config |
+| `src/opic/trace.py` | LLM 호출 트레이스(로컬 JSONL). `install(settings)`(after 훅 맨 끝 + error 훅에 기록기 등록, 여러 번 불러도 1개), `uninstall()`, `TraceRecorder`, `read_traces(path)` (§13) | llm, config |
 | `src/opic/config.py` | `.env` 로드, 경로·설정, logging 설정 | python-dotenv |
 | `src/opic/prompts/*.md` | 에이전트별 프롬프트 4종(survey, interviewer, scorer, feedback). 머리말 `id`/`version` + `[system]`/`[user]` 두 부분, 변수는 `${name}` | - |
 | `src/opic/prompts/__init__.py` | `load_prompt(name)` → `Prompt(id, version, system, user)`, `.ref`("id@version"), `.render(**값)`(빠진 변수는 KeyError), `wrap_answer(text)`(답변 속 answer 태그 제거 후 `<answer>`로 감쌈) | - |
@@ -250,6 +251,7 @@ interrupt 값(payload)의 키 (`kind` 공통):
 | SURVEY_FILE | 설문 파일 경로 (기본 `opic_survey.md`) | △ |
 | HISTORY_DIR | 기록 저장 경로 (기본 `data/history`) | △ |
 | LOG_LEVEL | 로그 레벨 (기본 INFO) | △ |
+| TRACE_FILE | LLM 호출 트레이스 JSONL 경로 (기본 `logs/traces.jsonl`, `off`면 기록 안 함) | △ |
 
 ## 9. 디렉터리 구조
 (Phase 1 스캐폴딩 완료. `src/opic/` 아래 파일은 해당 태스크에서 만든다)
@@ -266,9 +268,9 @@ mini-pjt/
 │  ├─ levels.json            # 레벨 순서, 레벨별 질문 유형·지시문
 │  ├─ rubric.json            # 항목·가중치, 등급 구간, 한글 감점, 최소 단어 수
 │  └─ history/               # 세션 기록 JSON
-├─ logs/                     # app.log
+├─ logs/                     # app.log, traces.jsonl (LLM 호출 트레이스)
 ├─ src/opic/
-│  ├─ app.py  graph.py  state.py  routing.py  llm.py  config.py  storage.py
+│  ├─ app.py  graph.py  state.py  routing.py  llm.py  trace.py  config.py  storage.py
 │  ├─ agents/  survey.py interviewer.py scorer.py feedback.py
 │  ├─ tools/   survey.py korean.py level.py
 │  ├─ rules/   scoring.py difficulty.py topic.py validation.py summary.py
@@ -279,7 +281,7 @@ mini-pjt/
 │  ├─ test_smoke.py          # 설치 라이브러리 핵심 API import 확인 (Phase 1)
 │  ├─ test_scoring.py  test_difficulty.py  test_korean.py  test_topic.py  test_validation.py
 │  ├─ test_survey.py   test_summary.py  test_level.py  test_storage.py
-│  ├─ test_routing.py  test_llm_fallback.py  test_agents.py  test_golden_set.py
+│  ├─ test_routing.py  test_llm_fallback.py  test_agents.py  test_golden_set.py  test_trace.py
 │  ├─ test_graph_flow.py     # LLM을 fake로 바꿔 5문항, 3문항 점검(수락/거절/경계), 피드백 단계 흐름 검증
 │  └─ test_app.py            # Streamlit AppTest(streamlit 내장) + fake LLM으로 화면 조작 검증
 └─ evals/                    # 실제 Bedrock 호출, 수동 실행 (비용 발생)
@@ -369,6 +371,7 @@ mini-pjt/
   - 라우팅: 분기 함수 이름, 선택된 다음 노드
   - 세션 이벤트: 시작, 난이도 조정, 저장
 - 답변 원문은 로그에 남기지 않는다(기록 JSON에만 저장).
+- LLM 호출별 상세(출력 포함)는 트레이스 파일(`logs/traces.jsonl`, §13)에 따로 남긴다.
 
 ## 12. PRD 대응표
 | PRD | 담당 |
@@ -397,20 +400,26 @@ mini-pjt/
 | 1 | 단일 진입점 | 모든 LLM 호출은 `llm.invoke_llm(role, messages, schema, metadata)`를 거친다. 다른 모듈에서 `ChatBedrockConverse`나 boto3로 직접 호출하지 않는다. |
 | 2 | 호출 메타데이터 | 호출마다 RunnableConfig `metadata`/`tags`에 `session_id`, `node`, `item_index`, `prompt`(`id@version`), `role`과 `llm.py`가 붙이는 `model_id`, `attempt`, `fallback`을 넣는다. 그래프 실행 config(`thread_id=session_id`)에서 이어받는다. |
 | 3 | 프롬프트 버전 | `prompts/*.md` 맨 위 `---` 머리말에 `id`, `version`을 둔다. system과 user 메시지 형식이 모두 파일 안에 있으므로, 어느 쪽을 바꿔도 version을 올린다. `load_prompt()`가 머리말을 읽고 `Prompt.ref`를 메타데이터 2번의 `prompt`에 넣는다. |
-| 4 | pre/post 훅 | `llm.before_call_hooks`(`(role, messages, metadata)`)와 `llm.after_call_hooks`(`(role, output, metadata)`) 목록. 처음에는 비어 있다(동작 없음). 가드레일과 트레이스 기록기는 여기에 등록한다. after 훅이 `GuardrailViolation`을 던지면 다음 모델로 넘어간다. |
+| 4 | pre/post 훅 | `llm.before_call_hooks`(`(role, messages, metadata)`), `llm.after_call_hooks`(`(role, output, metadata)`), `llm.error_call_hooks`(`(role, exc, metadata)`, 시도가 실패할 때마다, 기록 전용이라 예외는 삼킴) 목록. 기본은 비어 있다. 훅에 넘기는 metadata에는 `elapsed_ms`(시도 소요 시간)가 더해진다. after 훅이 `GuardrailViolation`을 던지면 다음 모델로 넘어간다. 출력 검사 훅을 앞에, 트레이스 기록기를 맨 끝에 둔다. |
 
 **이미 있는 가드레일** (유지): 고정 엣지 + 파이썬 분기(LLM이 흐름을 바꿀 수 없음), 답변 `<answer>` 격리(§3 보안), Pydantic 점수 범위 검증, 등급·감점·난이도 파이썬 판정, 최소 답변 길이 검증, 로깅(§11).
 
+**트레이스 저장** (Phase 6-1 구현, 사용자 결정: 로컬 JSONL)
+- 도구: 로컬 JSONL `logs/traces.jsonl`(`TRACE_FILE`로 경로 변경, `off`로 끔). 새 라이브러리·외부 서비스 없음.
+- 연결: `trace.install(settings)`를 `app.py`의 그래프 생성 시 부른다. after 훅(성공) + error 훅(실패)에 기록기를 단다.
+- 한 줄 = 시도 1번. 필드: `ts`, `session_id`, `node`, `item_index`, `role`, `prompt`, `model_id`, `attempt`, `fallback`, `elapsed_ms`, `status`(`ok`/`error`), 성공 시 `output`(구조화 출력은 dict, 일반 메시지는 content), 실패 시 `error`(`type`, `message` 500자).
+- 저장 범위: 메타데이터 + LLM 출력. 입력 메시지(답변 원문 포함)는 넣지 않는다.
+- 보존 기간: 제한 없음(자동 삭제 없음, 필요하면 직접 삭제). `logs/`는 커밋 제외.
+- 기록 실패는 경고 로그만 남기고 호출에 영향을 주지 않는다. 여러 세션이 동시에 써도 잠금으로 줄이 섞이지 않는다.
+- 평가 E2E(`evals/run_e2e.py`)는 `evals/results/e2e_traces.jsonl`에 따로 쓴다.
+
 **나중에 추가할 후보** (Phase 6에서 결정)
-- 트레이스 저장:
-  - 로컬 JSONL(`logs/traces.jsonl`, 새 라이브러리 없음)
-  - 또는 LangSmith/Langfuse 같은 외부 도구. 새 라이브러리와 외부 서비스가 필요하므로 **사용자 승인 필요**
 - Bedrock Guardrails: `ChatBedrockConverse`의 `guardrail_config`로 붙인다. 새 라이브러리는 없고, AWS 콘솔에서 Guardrail을 따로 만들어야 한다.
 - 출력 검사(post 훅):
   - 교정·대체 문장이 영어인지, 피드백 설명이 한국어인지
   - 한글 구간이 있는데 번역이 빠지지 않았는지
   - 질문이 배정된 주제를 지키는지
-- 그때 결정할 것: 사용할 도구, 저장 범위(답변 원문 포함 여부), 보존 기간. 결정되면 PRD §6 비기능 요구사항에 추가한다.
+- 결정된 트레이스·가드레일 항목은 PRD §6 비기능 요구사항에 추가한다(Phase 6 마지막 작업).
 
 ## 14. 테스트·평가 전략
 

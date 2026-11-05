@@ -60,6 +60,15 @@ class _FakeRunnable:
         return AIMessage(outcome)
 
 
+@pytest.fixture(autouse=True)
+def _restore_llm_hooks():
+    """훅 목록은 모듈 전역이라, 테스트(예: app.py가 트레이스를 설치)가 남긴 훅을 되돌린다."""
+    saved = [list(h) for h in (llm.before_call_hooks, llm.after_call_hooks, llm.error_call_hooks)]
+    yield
+    for hooks, original in zip((llm.before_call_hooks, llm.after_call_hooks, llm.error_call_hooks), saved):
+        hooks[:] = original
+
+
 @pytest.fixture
 def fake_llm(monkeypatch):
     fake = FakeLLM()
