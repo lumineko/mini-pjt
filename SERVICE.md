@@ -10,7 +10,7 @@ OPIc 텍스트 학습 프로그램. Streamlit UI가 LangGraph **고정 순서 �
 
 **설계 원칙**
 - 등급 판정과 상한, 한글 감점, 난이도 판정, 문항별 주제 배정, 문항 수 규칙, 답변 길이 검증, **다음 단계 결정(라우팅)**은 **파이썬 코드**가 맡는다. LLM은 생성(설문 fallback, 질문, 피드백·번역)과 루브릭 항목 점수만 한다.
-- 노드 순서는 그래프 엣지로 고정한다. 분기가 필요한 4곳(설문 검증, 답변 검증, 피드백 확인 후, 난이도 점검·조정)만 `routing.py`의 파이썬 함수가 State를 보고 다음 노드를 정한다. LLM이 흐름을 바꾸는 경로는 없다.
+- 노드 순서는 그래프 엣지로 고정한다. 분기가 필요한 4곳(설문 검증, 답변 검증, 피드백 확인 후, 난이도 점검·조정, 분기 함수 5개)만 `routing.py`의 파이썬 함수가 State를 보고 다음 노드를 정한다. LLM이 흐름을 바꾸는 경로는 없다.
 - 한 문항 안의 순서는 **Scorer → score_and_grade → Feedback** 순차로 고정한다. Feedback은 판정된 등급을 받아 대체 문장 수준을 맞춘다.
 - 사용자 답변은 **데이터로만** 다룬다. 답변 안에 있는 지시문은 따르지 않는다(§3 보안).
 
@@ -47,7 +47,7 @@ flowchart TD
 ## 2. 모듈 구성
 | 모듈 | 책임 | 의존 |
 |------|------|------|
-| `src/opic/app.py` | Streamlit 화면. 사이드바 메뉴(연습 / 지난 기록) + 진행 상황·'새 연습 시작'. 연습은 interrupt kind별 화면(설문, 문항, 피드백, 조정 확인, 결과), LLM 실패 시 '다시 시도'. 실행 `python -m streamlit run src/opic/app.py` | graph, storage |
+| `src/opic/app.py` | Streamlit 화면. 사이드바 메뉴(연습 / 지난 기록) + 진행 상황·'새 연습 시작'. 연습은 interrupt kind별 화면(설문, 문항, 피드백, 조정 확인, 결과), LLM 실패 시 '다시 시도'. 피드백·기록 상세에 개인정보 가림 안내. 그래프 생성 시 `guardrails.install()`·`trace.install()`. 실행 `python -m streamlit run src/opic/app.py` | graph, storage, guardrails, trace, rules.input_guard |
 | `src/opic/graph.py` | StateGraph 조립(`NODES` 14개, `FIXED_EDGES`, routing.CONDITIONAL_EDGES), HITL·파이썬 노드, 입력 처리 순수 함수(`apply_survey_submission`, `apply_answer_submission`, `build_item`), 체크포인터, `start_session` / `resume` / `retry` / `get_state` / `current_payload` | 모든 노드 |
 | `src/opic/state.py` | `SessionState`, `ItemResult`, `Pending` 등 타입 정의 | - |
 | `src/opic/routing.py` | 분기 함수 5개 `route_after_survey` / `route_after_answer` / `route_after_feedback` / `route_after_check` / `route_after_confirm` (State → 다음 노드 이름, 순수 함수), 노드 이름 상수, `CONDITIONAL_EDGES`(출발 노드 → 함수·가능한 도착 노드) | state, rules.difficulty |
@@ -184,7 +184,7 @@ HTTP API는 없다. Streamlit이 같은 프로세스 안에서 함수를 호출�
 |----------------|---------|-----------|
 | `survey` | 안내문, profile 문항은 라디오·topic 문항은 체크박스, 추천 보기 옆 ★ 표시(미리 선택 안 함), 레벨 선택, (survey_error가 있으면) 오류 안내 | `{answers: {id: [보기]}, level}` |
 | `answer` | 질문, 입력창, (answer_error가 있으면) 오류 안내 | 답변 텍스트 |
-| `feedback` | 항목별 점수, 등급, 달성 여부, 교정(없으면 "교정 사항 없음"), 대체 문장, 번역·감점 내역, "다음 문제"/"결과 보기" 버튼 | `True` |
+| `feedback` | 항목별 점수, 등급, 달성 여부, 교정(없으면 "교정 사항 없음"), 대체 문장, 번역·감점 내역, (개인정보를 가렸으면) 가림 안내, "다음 문제"/"결과 보기" 버튼 | `True` |
 | `adjust` | 3문항 평균 등급, 제안 레벨, 예/아니오 | `bool` |
 
 interrupt 값(payload)의 키 (`kind` 공통):
@@ -204,7 +204,7 @@ interrupt 값(payload)의 키 (`kind` 공통):
 1. **시작**: `start_session` → survey_agent. `opic_survey.md`를 파싱하고, 없으면 fallback으로 LLM이 1개를 생성한다 → `interrupt(survey)`
 2. **설문·레벨**: resume → `assign_topics`로 topic_plan 계산 → interviewer_agent → `interrupt(answer)`
 3. **문항 처리**:
-   - 답변 → validate와 detect_korean으로 pending 생성
+   - 답변 → validate → 인젝션 표시(`detect_injection`) → 개인정보 가림(`mask_pii`) → detect_korean으로 pending 생성
    - scorer_agent(LLM 점수) → score_and_grade(Py 등급) → feedback_agent(LLM, 등급 참고) → record_item(Py) → `interrupt(feedback)`
 4. **3문항 후**: check_difficulty(Py) → 필요하면 `interrupt(adjust)` → apply_level
 5. **5문항 후**: summarize(Py) → save_session(Py) → `data/history/{session_id}.json` → END
@@ -257,12 +257,12 @@ interrupt 값(payload)의 키 (`kind` 공통):
 | TRACE_FILE | LLM 호출 트레이스 JSONL 경로 (기본 `logs/traces.jsonl`, `off`면 기록 안 함) | △ |
 
 ## 9. 디렉터리 구조
-(Phase 1 스캐폴딩 완료. `src/opic/` 아래 파일은 해당 태스크에서 만든다)
+(Phase 0~6 구현 완료 기준)
 ```
 mini-pjt/
 ├─ opic_survey.md            # 사용자 작성 (없으면 fallback)
 ├─ .env / .env.example
-├─ .gitignore                # .env, data/history/, logs/, evals/results/, __pycache__/, .venv/
+├─ .gitignore                # .env, data/history/, logs/, evals/results/, __pycache__/, .venv/, PRD_SERVICE.md, graph.png
 ├─ requirements.txt          # streamlit, langgraph, langchain-aws, python-dotenv, pytest (pydantic은 langchain-core 의존성)
 ├─ pytest.ini                # testpaths=tests, pythonpath=src
 │                            # Python: 로컬 3.14, 설치 비호환 시 3.12 가상환경(.venv)
@@ -279,12 +279,14 @@ mini-pjt/
 │  ├─ rules/   scoring.py difficulty.py topic.py validation.py summary.py input_guard.py
 │  └─ prompts/ survey.md interviewer.md scorer.md feedback.md
 ├─ tests/                    # pytest 기본 실행 대상 (실제 LLM 호출 없음)
-│  ├─ fixtures/              # 공용 샘플 설문, 샘플 State, 가짜 LLM 응답
+│  ├─ fixtures/              # survey_items.py(공용 샘플 설문), sessions.py(샘플 문항·완료 세션)
 │  ├─ conftest.py            # fake_llm fixture (llm.set_model_factory로 가짜 모델 주입, 응답 큐·호출 기록)
 │  ├─ test_smoke.py          # 설치 라이브러리 핵심 API import 확인 (Phase 1)
+│  ├─ test_config.py  test_data_files.py  test_state.py  test_prompts.py
 │  ├─ test_scoring.py  test_difficulty.py  test_korean.py  test_topic.py  test_validation.py
 │  ├─ test_survey.py   test_summary.py  test_level.py  test_storage.py
 │  ├─ test_routing.py  test_llm_fallback.py  test_agents.py  test_golden_set.py  test_trace.py  test_guardrails.py  test_input_guard.py
+│  ├─ test_graph.py          # 노드·입력 처리 함수·API 단위 테스트
 │  ├─ test_graph_flow.py     # LLM을 fake로 바꿔 5문항, 3문항 점검(수락/거절/경계), 피드백 단계 흐름 검증
 │  └─ test_app.py            # Streamlit AppTest(streamlit 내장) + fake LLM으로 화면 조작 검증
 └─ evals/                    # 실제 Bedrock 호출, 수동 실행 (비용 발생)
@@ -292,7 +294,8 @@ mini-pjt/
    ├─ scorer/build_golden.py # 평가 세트 원본 + golden.jsonl·REVIEW.md 생성
    ├─ scorer/REVIEW.md       # 검수용 표
    ├─ run_scorer_eval.py
-   └─ results/               # {date}_{prompt_version}.json
+   ├─ run_e2e.py             # 화면 경로 E2E (5문항 세션·폴백·대체 설문, PRD 성공 기준)
+   └─ results/               # {date}_{prompt_version}.json, e2e 보고서·기록·트레이스
 ```
 
 ## 10. 데이터 파일 스키마
@@ -394,9 +397,13 @@ mini-pjt/
 | 성공 기준 1·3·6·9 | tests/test_graph_flow, test_survey |
 | 성공 기준 4 | tests/test_llm_fallback (fake 예외 주입) |
 | 성공 기준 10 / 채점 품질 (F-05) | evals/scorer (§14.2) |
+| 성공 기준 1~10 실제 모델 확인 | evals/run_e2e.py |
+| 비기능: 트레이스 | trace.py, llm.error_call_hooks |
+| 비기능: 가드레일 (입력) | rules.input_guard, await_answer(apply_answer_submission) |
+| 비기능: 가드레일 (출력) | guardrails.py (after 훅) |
 
 ## 13. 트레이스·가드레일 확장 지점
-트레이스 저장과 추가 가드레일의 **본체는 나중에(TASK Phase 6) 붙인다**. 그때 에이전트 코드를 고치지 않도록, 아래 연결 지점은 처음 구현할 때부터 넣는다.
+아래 연결 지점은 처음 구현할 때부터 넣었고, Phase 6에서 트레이스와 가드레일 본체를 여기에 붙였다(에이전트 코드는 메타데이터만 추가).
 
 | # | 연결 지점 | 구현 시 규칙 |
 |---|-----------|--------------|
@@ -457,6 +464,9 @@ mini-pjt/
 | `agents/` | 가짜 LLM(고정 응답)으로 입력 구성(예: `<answer>` 격리, 배정 주제 전달)과 출력 State 반영 확인 |
 | `routing.py` | 분기 함수별 조건 → 다음 노드 (5문항, 3문항 점검, 조정 수락/거절, 검증 실패 재입력) |
 | `graph.py` | fake LLM으로 한 세션 전체 흐름(조정 수락/거절/경계), 문항 안 순서(scorer → score_and_grade → feedback) |
+| `trace.py` | 시도별 기록(성공·재시도·폴백·가드레일 위반), 답변 원문 미기록, 기록 실패 무해 |
+| `guardrails.py`, `rules/input_guard.py` | 주제 키워드·언어·번역·교정 근거 검사와 폴백, 개인정보 가림·인젝션 감지(골든 세트 오탐 0) |
+| `app.py` | Streamlit AppTest + fake LLM으로 화면 조작(설문, 문항, 피드백, 조정, 기록, 개인정보 안내) |
 
 - 공용 데이터는 `tests/fixtures/`와 `conftest.py`에 두고 재사용한다.
 
@@ -492,4 +502,4 @@ mini-pjt/
 - **결과 저장:** `evals/results/{YYYYMMDD-HHMMSS}_{prompt_id@version}.json`에 저장한다(지표, 목표 통과 여부, 건별 점수·등급, 일관성 반복값). 모델 ID와 rubric.json 해시도 함께 남긴다(§13 메타데이터와 연결).
 - **다시 돌리는 시점:** `prompts/scorer.md` 버전 변경, 모델 변경(MODEL_PRIMARY/FALLBACKS), `rubric.json`(가중치·등급 구간) 변경 시
 - 실제 Bedrock을 호출해 비용이 들므로 `pytest` 기본 실행에서는 빼고 수동으로 실행한다.
-- 다른 에이전트(interviewer, feedback)의 품질 평가는 필요해지면 Phase 6에서 같은 구조(`evals/<agent>/`)로 추가한다.
+- 다른 에이전트(interviewer, feedback)의 품질 평가는 필요해지면 같은 구조(`evals/<agent>/`)로 추가한다(현재는 E2E와 출력 가드레일로 확인).

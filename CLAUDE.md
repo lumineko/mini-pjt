@@ -32,7 +32,7 @@ Phase 0~6 구현 완료(트레이스·로컬 가드레일 포함). 남은 백로
 
 # 코드 구조 (상세는 SERVICE.md §2, §3, §9)
 흐름: `app.py`(Streamlit) → `graph.py` API(`start_session`/`resume`/`retry`) → LangGraph 고정 순서 워크플로.
-한 문항: `interviewer_agent` → `await_answer`(HITL) → `scorer_agent` → `score_and_grade`(Py) → `feedback_agent` → `record_item`(Py) → `show_feedback`(HITL). 분기 5곳은 `routing.py`의 파이썬 함수가 정한다(슈퍼바이저 없음).
+한 문항: `interviewer_agent` → `await_answer`(HITL) → `scorer_agent` → `score_and_grade`(Py) → `feedback_agent` → `record_item`(Py) → `show_feedback`(HITL). 분기(함수 5개)는 `routing.py`의 파이썬 함수가 정한다(슈퍼바이저 없음).
 
 - `src/opic/rules/` — 등급·감점·상한·난이도·주제 배정·검증·요약·입력 가드레일(`input_guard.py`: 개인정보 가림, 인젝션 표시만). Bedrock Guardrails는 쓰지 않는다(사용 불가). LLM 없는 순수 함수이며, 판정은 반드시 여기서 한다.
 - `src/opic/tools/` — 한글 감지(`korean.py`, 단어 기준 비율), 설문 파싱(`survey.py`), 레벨 지침(`level.py`).

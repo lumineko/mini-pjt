@@ -11,7 +11,7 @@
 
 botocore 자체 재시도는 끈다(total_max_attempts=1). 재시도는 여기서만 한다.
 
-확장 지점 (SERVICE §13, Phase 6에서 사용):
+확장 지점 (SERVICE §13, Phase 6 트레이스·출력 가드레일이 사용):
 - 호출 메타데이터: RunnableConfig metadata/tags에 role, model_id, attempt, session_id, node, item_index, prompt(id@version)
 - 훅: before_call_hooks / after_call_hooks / error_call_hooks (기본은 비어 있음, 트레이스는 trace.install()로 등록)
 """

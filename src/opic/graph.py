@@ -1,6 +1,6 @@
 """LangGraph 고정 순서 워크플로 조립과 UI용 API (SERVICE §1, §3, §4).
 
-- 노드 순서는 고정 엣지로, 분기 4곳은 routing.py 파이썬 함수로 정한다(슈퍼바이저 없음).
+- 노드 순서는 고정 엣지로, 분기 4곳(함수 5개)은 routing.py 파이썬 함수로 정한다(슈퍼바이저 없음).
 - HITL 노드는 `interrupt(payload)`로 멈추고 `Command(resume=값)`으로 이어 간다.
   LangGraph는 재개할 때 노드를 처음부터 다시 실행하므로, HITL 노드는 interrupt 전에 부작용이 없고
   입력 처리는 순수 함수(`apply_*`)로 분리한다.
