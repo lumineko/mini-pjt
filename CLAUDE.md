@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `evals/` — 실제 모델로 채점 품질을 재는 평가 세트·스크립트 (SERVICE.md §14.2, 수동 실행)
 
 # 개발 명령어
-Phase 0~5 구현 완료. Phase 6(트레이스·가드레일) 진행 중(트레이스·출력 가드레일 완료).
+Phase 0~5 구현 완료. Phase 6(트레이스·가드레일) 진행 중(트레이스·출력/입력 가드레일 완료, PRD 반영만 남음).
 
 - 설치 (Python 3.14): `python -m venv .venv` → `.venv\Scripts\python -m pip install -r requirements.txt`
 - 자격 증명: `.env.example`을 `.env`로 복사해 AWS 액세스 키 **또는** `AWS_PROFILE` 중 하나와 `AWS_REGION`을 채운다. 키가 필요한 것은 앱 실행·`evals/`뿐이고, pytest는 키 없이 돈다.
@@ -34,11 +34,11 @@ Phase 0~5 구현 완료. Phase 6(트레이스·가드레일) 진행 중(트레�
 흐름: `app.py`(Streamlit) → `graph.py` API(`start_session`/`resume`/`retry`) → LangGraph 고정 순서 워크플로.
 한 문항: `interviewer_agent` → `await_answer`(HITL) → `scorer_agent` → `score_and_grade`(Py) → `feedback_agent` → `record_item`(Py) → `show_feedback`(HITL). 분기 5곳은 `routing.py`의 파이썬 함수가 정한다(슈퍼바이저 없음).
 
-- `src/opic/rules/` — 등급·감점·상한·난이도·주제 배정·검증·요약. LLM 없는 순수 함수이며, 판정은 반드시 여기서 한다.
+- `src/opic/rules/` — 등급·감점·상한·난이도·주제 배정·검증·요약·입력 가드레일(`input_guard.py`: 개인정보 가림, 인젝션 표시만). Bedrock Guardrails는 쓰지 않는다(사용 불가). LLM 없는 순수 함수이며, 판정은 반드시 여기서 한다.
 - `src/opic/tools/` — 한글 감지(`korean.py`, 단어 기준 비율), 설문 파싱(`survey.py`), 레벨 지침(`level.py`).
 - `src/opic/agents/` — LLM 에이전트 4종. 순수 함수(예: `score_answer`) + 노드 `run(state)` 2층 구조. 출력은 동적 Pydantic 스키마로 검증한다.
 - `src/opic/llm.py` — **모든 LLM 호출의 단일 진입점** `invoke_llm`(재시도·폴백·메타데이터·훅). Bedrock을 다른 곳에서 직접 부르지 않는다.
-- `src/opic/guardrails.py` — 출력 가드레일 after 훅(주제 키워드·언어 규칙·번역 누락, 파이썬 규칙). 위반 시 `GuardrailViolation` → 다음 모델.
+- `src/opic/guardrails.py` — 출력 가드레일 after 훅(주제 키워드·언어 규칙·번역 누락·교정 원문 근거, 파이썬 규칙). 위반 시 `GuardrailViolation` → 다음 모델.
 - `src/opic/trace.py` — LLM 호출 트레이스(`logs/traces.jsonl`, `TRACE_FILE=off`로 끔). `app.py`가 `trace.install()`로 훅에 등록한다. 출력 검사 훅은 트레이스 기록기보다 앞에 둔다.
 - `src/opic/prompts/*.md` — `id`/`version` 머리말 + `[system]`/`[user]`. 프롬프트를 바꾸면 version을 올리고 채점 평가를 다시 돌린다.
 - `src/opic/graph.py` — 노드·엣지 조립과 API. HITL 노드는 재개할 때 처음부터 다시 실행되므로 interrupt 앞에 부작용을 두지 않고, 입력 처리는 `apply_*` 순수 함수에 둔다.

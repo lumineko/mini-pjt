@@ -56,7 +56,7 @@
 ### Phase 6. 트레이스·가드레일 (SERVICE §13)
 - [x] 트레이스 저장 방식 결정 (로컬 JSONL / 외부 도구, 외부 도구는 사용자 승인 필요) 및 after_call 훅 구현
 - [x] 출력 가드레일 post 훅 (언어 검사, 번역 누락, 주제 이탈)
-- [ ] Bedrock Guardrails 적용 여부 결정 및 guardrail_config 연결
+- [x] ~~Bedrock Guardrails 적용 여부 결정 및 guardrail_config 연결~~ → Bedrock Guardrails 사용 불가로 로컬 입력 가드레일(개인정보 가림·인젝션 표시) + 교정 근거 확인으로 대체
 - [ ] PRD §6 비기능 요구사항에 트레이스·가드레일 항목 반영
 
 ## 작업 로그
@@ -101,3 +101,4 @@
 | 2026-11-05 | Phase 5: CLAUDE.md 명령 갱신 (Phase 5 완료) | 개발 명령어(설치, .env, 앱 실행, 테스트 전체·하나, 평가 3종)와 코드 구조(한 문항 흐름, 모듈별 규칙: 판정은 rules/, LLM은 invoke_llm만, 프롬프트 version, HITL 재실행 주의, fake_llm fixture, 커밋 제외 목록)로 다시 씀. 문서의 명령 실제 실행 확인 | Phase 6 트레이스·가드레일 (사용자 결정 필요) |
 | 2026-11-05 | Phase 6: 트레이스 (로컬 JSONL) | 사용자 결정: 로컬 JSONL, 메타데이터+출력(입력·답변 원문 제외), 보존 제한 없음. `trace.py`(TraceRecorder·install·uninstall·read_traces, 시도 1번 = 한 줄, 잠금, 기록 실패는 경고만). `llm.py`에 `error_call_hooks` 추가(실패 시도도 기록, 예외 삼킴), 훅 metadata에 `elapsed_ms`. `TRACE_FILE`(기본 logs/traces.jsonl, off로 끔), app.py에서 설치, E2E는 evals/results에 따로. conftest에 훅 목록 복원 fixture. SERVICE §2·§8·§9·§11·§13 반영. `tests/test_trace.py` 13개, 전체 434개 통과 | 출력 가드레일 post 훅 |
 | 2026-11-05 | Phase 6: 출력 가드레일 post 훅 | 사용자 결정: 주제 이탈은 키워드 자기검증(추가 LLM 호출 없음), 위반 시 다음 모델로 폴백. `guardrails.py`(after 훅 맨 앞): interviewer는 `topic_keywords` 중 일반 단어 아닌 것이 질문에 있는지(구는 모든 단어, 4글자 이상 앞부분 일치), feedback은 corrected·대체 문장 한글 없음, reason 한국어, 번역 누락·번역에 한글 남음(`needs_translation` 메타데이터). interviewer 스키마에 `topic_keywords`(1~3, 영어) 추가, 프롬프트 interviewer@2. app.py에서 설치. 테스트 `tests/test_guardrails.py` 31개 + 스키마 2개, 전체 467개 통과. 실제 Bedrock E2E 13/13 통과(위반 0건, 트레이스로 키워드·스로틀링 재시도 확인) | Bedrock Guardrails 적용 여부 결정 |
+| 2026-11-05 | Phase 6: 로컬 입력 가드레일 (Bedrock Guardrails 대체) | Bedrock Guardrails 사용 불가 확인 → 연결 코드 되돌리고(미커밋) 파이썬으로 대체. 사용자 결정: ①개인정보 가림(기록에도 가린 값) ②인젝션 문구 표시만 ③교정 근거 확인. `rules/input_guard.py`(`mask_pii` 이메일·주민번호·카드·전화·계좌, `detect_injection` 영어·한국어 규칙 10개), `apply_answer_submission`에서 인젝션 감지(원문) → 가림 → 한글 비율(가린 답변). Pending·ItemResult에 `pii_types`·`injection_flags`, 트레이스에 `injection_flags`. 출력 가드레일에 `grounded_in`(교정 original 단어 80% 이상이 답변에 같은 순서, difflib) 추가, feedback 메타데이터 `guard_answer`(트레이스 제외). 화면: 답변 안내 문구, 피드백·기록에 개인정보 가림 안내. 골든 세트 오탐 0·injection 3/3 감지. 전체 524개 통과. 실제 Bedrock E2E 13/13(Sonnet 일일 토큰 한도로 전부 Haiku 폴백, 위반 0건), 오류 많은 답변 실제 피드백 교정 5건 모두 근거 통과. SERVICE §2·§3·§9·§13 반영 | PRD §6 트레이스·가드레일 반영 |

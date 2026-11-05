@@ -50,7 +50,7 @@ def test_grades_ordinal_and_below_lowest_match_rubric():
 
 def test_pending_optional_stage_fields():
     assert Pending.__required_keys__ == {"korean_ratio", "korean_spans"}
-    assert Pending.__optional_keys__ == {"rubric_scores", "grading", "feedback"}
+    assert Pending.__optional_keys__ == {"pii_types", "injection_flags", "rubric_scores", "grading", "feedback"}
 
 
 def test_item_result_contains_grading_and_feedback_fields():

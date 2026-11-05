@@ -103,6 +103,51 @@ def test_feedback_reports_all_problems():
     assert len(guardrails.check_feedback(out, needs_translation=False)) == 3
 
 
+# ── 근거 확인 (교정 원문이 답변에 있는지) ─────────────────────────
+ANSWER = "I go to park every weekends with my dog. It is very fun! 저는 공원이 좋아요."
+
+
+@pytest.mark.parametrize("original", [
+    "I go to park every weekends.",
+    "it is very fun",
+    "I GO TO PARK, every weekends",
+    "I go to park every weekends with my cat.",  # 9단어 중 8개 일치 (80% 이상)
+    "저는 공원이 좋아요",
+])
+def test_grounded(original):
+    assert guardrails.grounded_in(original, ANSWER)
+
+
+@pytest.mark.parametrize("original", [
+    "I went to the beach yesterday.",
+    "I go to the park every weekend.",  # 고친 문장을 original로 낸 경우
+    "",
+    "...",
+])
+def test_not_grounded(original):
+    assert not guardrails.grounded_in(original, ANSWER)
+
+
+def test_feedback_ungrounded_correction_fails():
+    out = fb(corrections=[{"original": "I visited Paris last year.", "corrected": "I visited Paris last year.", "reason": "예시입니다."}])
+    problems = guardrails.check_feedback(out, needs_translation=False, answer="I go to park. It is fun.")
+    assert any("original이 답변에 없습니다" in p for p in problems)
+
+
+def test_feedback_grounding_skipped_without_answer():
+    out = fb(corrections=[{"original": "I visited Paris.", "corrected": "I visited Paris.", "reason": "예시입니다."}])
+    assert guardrails.check_feedback(out, needs_translation=False) == []
+
+
+def test_feedback_agent_passes_answer_for_grounding(fake_llm):
+    guardrails.install()
+    bad = {**OK_FEEDBACK, "corrections": [{"original": "I visited Paris.", "corrected": "I visited Paris.", "reason": "예시."}]}
+    fake_llm.push(bad, OK_FEEDBACK)
+    feedback.generate_feedback("Do you go to the park?", "IM", "I go to park. It is fun.", "IM", True, [])
+    assert fake_llm.calls[0]["metadata"]["guard_answer"] == "I go to park. It is fun."
+    assert len(fake_llm.calls) == 2
+
+
 # ── 훅 동작 ────────────────────────────────────────────────────────
 def test_output_guard_raises_guardrail_violation():
     with pytest.raises(llm.GuardrailViolation, match="주제 키워드"):
@@ -139,14 +184,14 @@ def test_off_topic_question_falls_back_to_next_model(fake_llm):
 
 def test_untranslated_feedback_falls_back_and_uses_needs_translation_meta(fake_llm):
     guardrails.install()
-    answer = "I go to 공원 every day."
+    answer = "I go to park. I go to 공원 every day."
     spans = detect_korean(answer)["spans"]
     fake_llm.push(
-        {**OK_FEEDBACK, "translation": "I go to 공원 every day."},
-        {**OK_FEEDBACK, "translation": "I go to the park every day."},
+        {**OK_FEEDBACK, "translation": "I go to park. I go to 공원 every day."},
+        {**OK_FEEDBACK, "translation": "I go to park. I go to the park every day."},
     )
     out = feedback.generate_feedback("Do you go to the park?", "IM", answer, "IM", True, spans)
-    assert out["translation"] == "I go to the park every day."
+    assert out["translation"] == "I go to park. I go to the park every day."
     assert fake_llm.calls[0]["metadata"]["needs_translation"] is True
     assert len(fake_llm.calls) == 2
 

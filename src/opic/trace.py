@@ -25,7 +25,7 @@ from opic.config import Settings
 logger = logging.getLogger(__name__)
 
 # 메타데이터 중 기록할 키 (순서 = 파일에 보이는 순서)
-META_KEYS = ("session_id", "node", "item_index", "role", "prompt", "model_id", "attempt", "fallback", "elapsed_ms")
+META_KEYS = ("session_id", "node", "item_index", "role", "prompt", "model_id", "attempt", "fallback", "elapsed_ms", "injection_flags")
 ERROR_MESSAGE_LIMIT = 500
 
 

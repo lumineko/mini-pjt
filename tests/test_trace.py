@@ -189,3 +189,14 @@ def test_graph_session_writes_traces_with_node_metadata(fake_llm, tmp_path, monk
     assert rec["item_index"] == 1
     assert rec["prompt"].startswith("interviewer@")
     assert rec["output"].get("question_type") == "묘사"
+
+
+def test_injection_flags_and_no_guard_answer_in_trace(tmp_path):
+    s = settings(tmp_path)
+    trace.install(s)
+    meta = {**META, "injection_flags": ["score_request"], "guard_answer": "SECRET ANSWER TEXT"}
+    llm.invoke_llm("scorer", MSGS, schema=Scores, metadata=meta, settings=s, factory=factory_for([{"grammar": 4}]))
+    [rec] = trace.read_traces(s.trace_file)
+    assert rec["injection_flags"] == ["score_request"]
+    assert "guard_answer" not in rec
+    assert "SECRET ANSWER TEXT" not in s.trace_file.read_text(encoding="utf-8")

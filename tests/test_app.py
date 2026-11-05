@@ -178,3 +178,12 @@ def test_new_session_button_resets(app):
     at.sidebar.button(key="sidebar_new").click().run()
     assert at.session_state["sid"] != old_sid
     assert at.session_state["payload"]["kind"] == "survey"
+
+
+def test_pii_is_masked_and_noticed(app):
+    at, fake = app
+    start_and_survey(at, fake)
+    answer(at, fake, 1, n_score=4, text="You can call me at 010-1234-5678 when I go jogging in the park.")
+    assert any("개인정보로 보이는 부분(전화번호)" in t for t in texts(at.info))
+    user = fake.user_text("scorer")
+    assert "010-1234-5678" not in user and "[PHONE]" in user

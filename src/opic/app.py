@@ -22,6 +22,7 @@ from opic import guardrails
 from opic import trace
 from opic.config import load_settings, setup_logging
 from opic.llm import LLMError
+from opic.rules.input_guard import PII_NAMES_KO
 from opic.rules.validation import validate_answer
 from opic.storage import list_sessions, load_session
 
@@ -143,7 +144,7 @@ def render_answer(p) -> None:
 
     with st.form(f"answer_form_{p['item_index']}"):
         text = st.text_area("영어로 답변을 입력하세요", height=220, key=f"answer-{p['item_index']}")
-        st.caption(f"최소 {p['min_words']}단어 이상")
+        st.caption(f"최소 {p['min_words']}단어 이상 · 전화번호·이메일 같은 개인정보는 자동으로 가려서 채점·저장합니다")
         if st.form_submit_button("제출", type="primary"):
             error = validate_answer(text, p["min_words"])
             if error:
@@ -155,6 +156,9 @@ def render_answer(p) -> None:
 
 def render_item_feedback(item) -> None:
     """피드백 화면과 기록 상세에서 함께 쓴다."""
+    if item.get("pii_types"):
+        names = ", ".join(PII_NAMES_KO.get(t, t) for t in item["pii_types"])
+        st.info(f"답변 속 개인정보로 보이는 부분({names})은 가려서 채점·저장했습니다.")
     cols = st.columns(3)
     cols[0].metric("판정 등급", item["grade"])
     cols[1].metric("출제 레벨", item["level"])

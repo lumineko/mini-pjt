@@ -86,6 +86,8 @@ class Pending(TypedDict):
 
     korean_ratio: float  # 유일한 출처 (await_answer에서 한 번만 계산)
     korean_spans: list[KoreanSpan]
+    pii_types: NotRequired[list[str]]  # 가린 개인정보 종류 (rules.input_guard.mask_pii)
+    injection_flags: NotRequired[list[str]]  # 인젝션 의심 규칙 이름 (표시만, rules.input_guard.detect_injection)
     rubric_scores: NotRequired[dict[str, int]]  # scorer_agent
     grading: NotRequired[Grading]  # score_and_grade
     feedback: NotRequired[Feedback]  # feedback_agent
@@ -98,8 +100,10 @@ class ItemResult(TypedDict):
     question_type: str
     topic: str
     level: Level  # 출제 레벨
-    answer: str
+    answer: str  # 개인정보를 가린 답변
     korean_ratio: float
+    pii_types: list[str]
+    injection_flags: list[str]
     rubric_scores: dict[str, int]
     weighted_score: float
     penalty: float

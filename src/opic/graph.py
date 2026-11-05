@@ -26,6 +26,7 @@ from opic.rules.topic import assign_topics
 from opic.rules.validation import validate_answer, validate_level, validate_survey_answers
 from opic.state import LEVELS, SESSION_ITEMS, ItemResult, Pending, SessionState, new_session_state
 from opic.storage import save_session
+from opic.rules.input_guard import detect_injection, mask_pii
 from opic.tools.korean import detect_korean
 
 logger = logging.getLogger(__name__)
@@ -53,16 +54,30 @@ def apply_survey_submission(state, value: Any) -> dict:
 
 
 def apply_answer_submission(state, text: Any, min_words: int) -> dict:
-    """답변 제출 → 검증 통과 시 current_answer와 pending(한글 비율, 유일한 출처) 생성."""
+    """답변 제출 → 검증 통과 시 current_answer와 pending(한글 비율, 유일한 출처) 생성.
+
+    입력 가드레일(SERVICE §13): 개인정보는 가린 답변을 current_answer로 쓴다(LLM·기록 모두 가린 값).
+    인젝션 의심 문구는 표시만 한다(injection_flags, 채점은 그대로).
+    """
     text = text if isinstance(text, str) else None
     error = validate_answer(text, min_words)
     if error:
         return {"answer_error": error}
     text = text.strip()
+    injection_flags = detect_injection(text)
+    masked = mask_pii(text)
+    text = masked["text"]
+    if masked["pii_types"]:
+        logger.warning("답변 개인정보 가림: %s", masked["pii_types"])
+    if injection_flags:
+        logger.warning("답변 인젝션 의심 (표시만): %s", injection_flags)
     korean = detect_korean(text)
     return {
         "current_answer": text,
-        "pending": Pending(korean_ratio=korean["ratio"], korean_spans=korean["spans"]),
+        "pending": Pending(
+            korean_ratio=korean["ratio"], korean_spans=korean["spans"],
+            pii_types=masked["pii_types"], injection_flags=injection_flags,
+        ),
         "answer_error": None,
     }
 
@@ -78,6 +93,8 @@ def build_item(state) -> ItemResult:
         level=state["current_level"],
         answer=state["current_answer"],
         korean_ratio=pending["korean_ratio"],
+        pii_types=pending.get("pii_types", []),
+        injection_flags=pending.get("injection_flags", []),
         rubric_scores=pending["rubric_scores"],
         weighted_score=grading["weighted_score"],
         penalty=grading["penalty"],

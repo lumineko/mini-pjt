@@ -24,4 +24,6 @@ def call_metadata(state, node: str, prompt: Prompt) -> dict:
         "node": node,
         "item_index": len(state.get("items") or []) + 1,
         "prompt": prompt.ref,
+        # 입력 가드레일 표시 (트레이스에 남김, 답변 처리 중일 때만)
+        "injection_flags": ((state.get("pending") or {}).get("injection_flags")) or None,
     }

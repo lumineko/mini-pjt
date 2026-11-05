@@ -5,14 +5,17 @@
 
 - interviewer: 주제 이탈. LLM이 함께 낸 `topic_keywords`(영어 1~3개) 중 일반 단어가 아닌 것 하나 이상이
   질문에 실제로 들어 있어야 한다(키워드 자기검증, 사용자 결정). 질문 영어 여부는 Pydantic 스키마가 본다.
-- feedback: 언어 규칙과 번역 누락.
+- feedback: 언어 규칙, 번역 누락, 근거 확인.
   - `corrected`, `alternatives`는 영어(한글 단어 없음). `original`은 학습자 문장이라 한글이 있을 수 있어 보지 않는다.
   - `reason`은 한국어(한글 단어 1개 이상).
   - 한글 구간이 있으면(`metadata.needs_translation`) 번역이 비지 않고, 번역에 한글이 남지 않는다.
+  - 근거: 교정의 `original`이 실제 답변(`metadata.guard_answer`, 개인정보 가린 답변)에 있는 문장이어야 한다.
+    단어(대소문자·문장부호 무시)의 80% 이상이 답변에 같은 순서로 있으면 인정한다.
 
 `install()`은 after 훅 맨 앞에 붙인다. 트레이스 기록기(trace.install)는 맨 끝이라, 위반한 출력은 error로 기록된다.
 """
 
+import difflib
 import logging
 import re
 from typing import Any
@@ -33,6 +36,8 @@ GENERIC_WORDS = frozenset({
 })
 _WORD_RE = re.compile(r"[a-z]+")
 MIN_PREFIX = 4
+_TOKEN_RE = re.compile(r"\w+")
+GROUNDING_MIN_RATIO = 0.8
 
 
 def has_korean(text: str | None) -> bool:
@@ -58,6 +63,20 @@ def keyword_in_question(keyword: str, question: str) -> bool:
     return all(any(_same_word(w, q) for q in question_words) for w in words)
 
 
+def _tokens(text: str) -> list[str]:
+    return _TOKEN_RE.findall(text.lower())
+
+
+def grounded_in(original: str, answer: str, min_ratio: float = GROUNDING_MIN_RATIO) -> bool:
+    """original 단어의 min_ratio 이상이 answer에 같은 순서로 있으면 True (지어낸 문장 감지)."""
+    orig = _tokens(original)
+    if not orig:
+        return False
+    matcher = difflib.SequenceMatcher(None, orig, _tokens(answer), autojunk=False)
+    matched = sum(block.size for block in matcher.get_matching_blocks())
+    return matched / len(orig) >= min_ratio
+
+
 # ── 검사 (위반 사유 목록, 없으면 빈 목록) ─────────────────────────
 def check_interviewer(output: Any) -> list[str]:
     keywords = list(getattr(output, "topic_keywords", None) or [])
@@ -68,9 +87,11 @@ def check_interviewer(output: Any) -> list[str]:
     return []
 
 
-def check_feedback(output: Any, needs_translation: bool) -> list[str]:
+def check_feedback(output: Any, needs_translation: bool, answer: str | None = None) -> list[str]:
     problems = []
     for i, c in enumerate(output.corrections, 1):
+        if answer is not None and not grounded_in(c.original, answer):
+            problems.append(f"교정 {i}의 original이 답변에 없습니다")
         if has_korean(c.corrected):
             problems.append(f"교정 {i}의 corrected에 한글이 있습니다")
         if not has_korean(c.reason):
@@ -91,7 +112,7 @@ def output_guard(role: str, output: Any, meta: dict[str, Any]) -> None:
     if role == "interviewer":
         problems = check_interviewer(output)
     elif role == "feedback":
-        problems = check_feedback(output, bool(meta.get("needs_translation")))
+        problems = check_feedback(output, bool(meta.get("needs_translation")), meta.get("guard_answer"))
     else:
         return
     if problems:
