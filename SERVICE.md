@@ -298,27 +298,28 @@ mini-pjt/
 ["직업", "거주지", "여가활동", "취미/관심사", "운동", "휴가/출장"]
 ```
 
-**`data/levels.json`**
+**`data/levels.json`** (질문 유형 후보는 **누적형**: 상위 레벨은 하위 유형을 포함하고 어려운 유형을 더한다. 난이도 차이는 guide의 요구 수준으로 둔다. guide 전문은 파일 참고)
 ```json
 {
   "order": ["IL", "IM", "IH", "AL"],
   "levels": {
-    "IL": {"question_types": ["묘사"], "guide": "짧고 쉬운 일상 질문, 현재 시제"},
-    "IM": {"question_types": ["묘사", "습관"], "guide": "..."},
-    "IH": {"question_types": ["과거 경험", "비교"], "guide": "..."},
-    "AL": {"question_types": ["롤플레이", "의견·이슈"], "guide": "..."}
+    "IL": {"question_types": ["묘사", "습관"], "guide": "짧고 쉬운 일상 질문 1개, 현재 시제, 한 가지만 묻기 ..."},
+    "IM": {"question_types": ["묘사", "습관", "과거 경험"], "guide": "2~3가지를 이어서 묻기, 최근의 단순한 경험 ..."},
+    "IH": {"question_types": ["묘사", "습관", "과거 경험", "비교", "롤플레이"], "guide": "기억에 남는 경험·비교, 정보 질문 롤플레이 ..."},
+    "AL": {"question_types": ["묘사", "습관", "과거 경험", "비교", "롤플레이", "의견·이슈"], "guide": "문제 상황 대응·대안 제시, 근거 있는 의견 ..."}
   }
 }
 ```
+- 모든 레벨의 후보가 2개 이상이므로 "이전 유형과 겹치지 않게" 지시를 항상 지킬 수 있다.
 
 **`data/rubric.json`**
 ```json
 {
   "items": [
-    {"key": "grammar", "label": "문법", "weight": 0.3},
-    {"key": "vocabulary", "label": "어휘", "weight": 0.25},
-    {"key": "organization", "label": "구성", "weight": 0.2},
-    {"key": "task", "label": "과제 수행", "weight": 0.25}
+    {"key": "grammar", "label": "문법", "weight": 0.3, "description": "..."},
+    {"key": "vocabulary", "label": "어휘", "weight": 0.25, "description": "..."},
+    {"key": "organization", "label": "구성", "weight": 0.2, "description": "..."},
+    {"key": "task", "label": "과제 수행", "weight": 0.25, "description": "..."}
   ],
   "scale": {"min": 1, "max": 5},
   "grade_bands": [
@@ -333,6 +334,7 @@ mini-pjt/
   "min_words": 5
 }
 ```
+- `description`은 scorer 프롬프트에 넣을 항목 설명이다.
 - 가중 점수 = Σ(점수 × weight) (1~5 척도)
 - 최종 점수 = 가중 점수 − (한글 비율 × 10 × penalty_per_10pct)
 - 한글 비율이 fail_threshold 이상이면 점수와 상관없이 "IL 미달"

@@ -1,0 +1,20 @@
+{
+  "_note": "초안 (2026-11-05). 가중치·등급 구간·감점 폭은 Phase 3 scorer 평가(SERVICE §14.2) 결과로 조정한다.",
+  "items": [
+    {"key": "grammar", "label": "문법", "weight": 0.3, "description": "시제, 수 일치, 관사, 문장 구조의 정확성"},
+    {"key": "vocabulary", "label": "어휘", "weight": 0.25, "description": "어휘의 다양성과 정확한 쓰임, 자연스러운 표현"},
+    {"key": "organization", "label": "구성", "weight": 0.2, "description": "문장 간 연결, 시작·전개·마무리, 연결어 사용"},
+    {"key": "task", "label": "과제 수행", "weight": 0.25, "description": "질문에 맞는 내용, 요구한 항목을 빠짐없이 다뤘는지, 답변 분량"}
+  ],
+  "scale": {"min": 1, "max": 5},
+  "grade_bands": [
+    {"grade": "AL", "min": 4.5},
+    {"grade": "IH", "min": 3.7},
+    {"grade": "IM", "min": 2.8},
+    {"grade": "IL", "min": 2.0}
+  ],
+  "below_lowest": "IL 미달",
+  "grade_cap_offset": 1,
+  "korean": {"penalty_per_10pct": 0.2, "fail_threshold": 0.8},
+  "min_words": 5
+}

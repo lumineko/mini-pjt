@@ -18,7 +18,7 @@
 ### Phase 1. 프로젝트 스캐폴딩
 - [x] 디렉터리 구조 + `.gitignore`(.env, data/history/, logs/, evals/results/, __pycache__/, .venv/) + `requirements.txt` (streamlit, langgraph, langchain-aws, python-dotenv, pytest — 승인됨) + 가상환경 설치 확인 (Python 3.14, 비호환 시 3.12)
 - [x] `.env.example` + `config.py` 설정 로더 + `tests/test_config.py`
-- [ ] 데이터 초안: `data/default_topics.json`, `data/levels.json`, `data/rubric.json`
+- [x] 데이터 초안: `data/default_topics.json`, `data/levels.json`, `data/rubric.json` + `tests/test_data_files.py`
 - [ ] `state.py` 타입 정의
 
 ### Phase 2. 규칙·도구 (Python, 테스트 우선)
@@ -76,3 +76,4 @@
 | 2026-11-04 | Phase 1: 디렉터리 구조 + .gitignore + requirements.txt | src/opic 패키지 골격, data·logs·tests·evals 폴더, .gitignore, pytest.ini, requirements(~= 고정). Python 3.14 venv 설치 성공, tests/test_smoke.py 5개 통과 | `.env.example` + `config.py` |
 | 2026-11-05 | 슈퍼바이저 제거 (개발 시간 단축) | 고정 순서 워크플로로 변경: 문항 안 순서 scorer → score_and_grade → feedback(등급 참고) → record_item, 분기는 `routing.py` 파이썬 함수 5개. PRD §6, SERVICE §1~3·5·7·9·11~14, CLAUDE.md 동기화, 프롬프트 4종 | `.env.example` + `config.py` |
 | 2026-11-05 | Phase 1: `.env.example` + `config.py` | 인증은 액세스 키/프로필 둘 다 지원(둘 중 하나), 키 없어도 로드 가능(`has_credentials`로 확인), 빈 값은 기본값, 상대 경로는 루트 기준, 환경변수가 .env보다 우선, `setup_logging`(콘솔+logs/app.log, 중복 방지). 테스트 13개 추가, 전체 18개 통과 | 데이터 초안 (default_topics, levels, rubric) |
+| 2026-11-05 | Phase 1: 데이터 초안 | default_topics 6개, levels.json 누적형 질문 유형 + 레벨별 guide 초안(사용자 검토 대상), rubric.json SERVICE §10 수치 + 항목 description. SERVICE §10 동기화. 형식 검사 테스트 추가 | `state.py` 타입 정의 |
