@@ -17,6 +17,8 @@ BELOW_LOWEST: Grade = "IL 미달"
 # 낮은 순서. 순서값 = 인덱스 (IL 미달=0 … AL=4, PRD F-11)
 GRADES: tuple[Grade, ...] = (BELOW_LOWEST, *LEVELS)
 
+SESSION_ITEMS = 5  # 한 세션 문항 수 (PRD F-11)
+
 SurveySource = Literal["file", "fallback"]
 SurveyKind = Literal["profile", "topic"]
 Direction = Literal["up", "down"]

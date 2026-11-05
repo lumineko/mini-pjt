@@ -26,7 +26,7 @@
 - [x] `tools/korean.py` + `tests/test_korean.py`
 - [x] `rules/difficulty.py` + `tests/test_difficulty.py` (AL/IL 경계 포함)
 - [x] `rules/topic.py` + `tests/test_topic.py`, `rules/validation.py` + `tests/test_validation.py`
-- [ ] `rules/summary.py` + `tests/test_summary.py`
+- [x] `rules/summary.py` + `tests/test_summary.py`
 - [ ] `tools/survey.py` + `tests/test_survey.py` (파싱, [프로필]/★/안내문 처리, fallback 조건)
 - [ ] `tools/level.py` + `tests/test_level.py`, `storage.py` + `tests/test_storage.py`
 
@@ -82,3 +82,4 @@
 | 2026-11-05 | Phase 2: `tools/korean.py` | 한글 비율 **단어 기준** 확정(한글 들어간 단어/전체 단어, 숫자·문장부호만 있는 덩어리 제외), 최소 단어 수에 한글 단어 포함, 번역 구간 병합 규칙, `count_words` 공용. PRD F-04·F-13, SERVICE §2 반영. 테스트 24개 추가, 전체 121개 통과 | `rules/difficulty.py` |
 | 2026-11-05 | Phase 2: `rules/difficulty.py` | `propose_adjustment`(3문항 평균 등급 vs 목표, 항상 한 단계, AL up·IL down 없음, IL 미달은 down, 정확히 3개 검증), `apply_adjustment`(새 레벨 + LevelChange, 잘못된 제안 거부). SERVICE §2 반영. 테스트 29개 추가, 전체 150개 통과 | `rules/topic.py` + `rules/validation.py` |
 | 2026-11-05 | Phase 2: `rules/topic.py` + `rules/validation.py` | 주제 배정 **주제별 번갈아** 확정(설문 순서, 안 쓴 보기 우선, 다 쓴 뒤에만 반복, profile 제외). 검증: 답변(빈 값·최소 단어), 레벨, 설문 응답(profile 1·topic ≥1·보기 값·중복). 공용 샘플 `tests/fixtures/survey_items.py`. SERVICE §2 반영. 테스트 43개 추가, 전체 193개 통과 | `rules/summary.py` |
+| 2026-11-05 | Phase 2: `rules/summary.py` | `summarize`: 문항별 등급, 평균 등급(scoring.average_grade), 시작·최종 레벨(이력 마지막 to), 변경 여부. 5문항·이력 연속성 검증. `SESSION_ITEMS`를 state.py 공용 상수로 이동. SERVICE §2 반영. 테스트 10개 추가, 전체 203개 통과 | `tools/survey.py` |

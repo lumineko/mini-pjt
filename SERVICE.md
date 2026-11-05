@@ -62,7 +62,7 @@ flowchart TD
 | `src/opic/rules/difficulty.py` | `propose_adjustment(grades, current_level)`: 3문항 평균 등급과 목표 비교, 한 단계 조정 제안, AL·IL 경계. `apply_adjustment(level, proposal, after_item)`: 새 레벨 + LevelChange (순수 함수) | rules.scoring, state(LEVELS) |
 | `src/opic/rules/topic.py` | `assign_topics(survey_items, survey_answers, n=5)`. `kind=topic` 문항의 선택만 쓰고, **설문 주제별로 번갈아** 아직 안 쓴 보기를 하나씩 뽑는다(주제·보기 순서는 설문 파일 순서). 모든 보기를 다 쓴 뒤에만 반복 (순수 함수) | state |
 | `src/opic/rules/validation.py` | `validate_answer(text, min_words)`(단어 수는 `tools.korean.count_words`, 한글 단어 포함), `validate_level(level)`, `validate_survey_answers(items, answers)`(profile 1개, topic 1개 이상, 보기에 있는 값만, 중복 금지). 통과 None / 실패 시 한국어 안내문 (순수 함수) | tools.korean, state |
-| `src/opic/rules/summary.py` | 세션 요약 계산 (순수 함수) | rules.scoring |
+| `src/opic/rules/summary.py` | `summarize(items, initial_level, level_history)`: 문항별 등급, 평균 등급(순서값 평균 반올림), 시작·최종 레벨, 변경 여부. 정확히 5문항·이력 연속성 검증 (순수 함수) | rules.scoring, state(SESSION_ITEMS) |
 | `src/opic/storage.py` | 세션 JSON 저장, 목록, 조회 | data/history/ |
 | `src/opic/llm.py` | **모든 LLM 호출의 단일 진입점** (에이전트는 Bedrock을 직접 호출하지 않음). Bedrock 클라이언트, 재시도·폴백 체인, 구조화 출력, 호출 로깅, 트레이스 메타데이터 전달, pre/post 훅 (§13) | langchain-aws, config |
 | `src/opic/config.py` | `.env` 로드, 경로·설정, logging 설정 | python-dotenv |

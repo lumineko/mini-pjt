@@ -13,9 +13,7 @@
 
 from collections.abc import Mapping, Sequence
 
-from opic.state import SurveyItem
-
-SESSION_ITEMS = 5
+from opic.state import SESSION_ITEMS, SurveyItem
 
 
 def selected_by_topic(
