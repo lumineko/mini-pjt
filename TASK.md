@@ -39,7 +39,7 @@
 
 ### Phase 3. LLM·에이전트
 - [x] `llm.py` Bedrock 클라이언트 + 용도별 모델 매핑 + 재시도·폴백 + 트레이스 메타데이터 전달 + pre/post 훅 자리 (SERVICE §13) + `tests/test_llm_fallback.py`
-- [ ] `prompts/` 4종 survey, interviewer, scorer, feedback (id/version 헤더 포함)
+- [x] `prompts/` 4종 survey, interviewer, scorer, feedback (id/version 헤더 포함)
 - [ ] `agents/` survey, interviewer, scorer, feedback + 가짜 LLM 테스트 (`tests/test_agents.py`)
 - [ ] scorer 평가 실행 → 목표 지표 달성까지 `prompts/scorer.md`·`rubric.json` 조정 (SERVICE §14.2)
 
@@ -89,3 +89,4 @@
 | 2026-11-05 | Phase 2.5: 사용자 검수 | 36건 제안 등급 그대로 확정, `reviewed: true`로 재생성 | `evals/run_scorer_eval.py` |
 | 2026-11-05 | Phase 2.5: `evals/run_scorer_eval.py` (Phase 2.5 완료) | 채점 함수 주입 구조(규약 `score_answer(question, level, answer, korean_spans)`), 지표 5종 파이썬 계산·목표 판정, 일관성 표본 10건×3회, 인젝션 항목별 ±1, 검수 전 실행 거부, `--fake` 모드, 결과 JSON 저장. 지표 테스트 `tests/test_scorer_eval.py`. SERVICE §14.2·CLAUDE.md 명령 반영. 전체 271개 통과 | Phase 3 `llm.py` |
 | 2026-11-05 | Phase 3: `llm.py` | `invoke_llm` 단일 진입점: 모델 목록 순회 루프(재시도 가능 오류만 1s·2s 백오프 재시도, 구조화 출력 실패·가드레일 위반·기타 오류는 바로 다음 모델, 전부 실패 시 LLMError), botocore 재시도 끔(total_max_attempts=1, 테스트로 발견), 용도별 temperature/max_tokens, 메타데이터·tags, before/after 훅(빈 목록), factory·sleep 주입. with_retry/with_fallbacks 대신 직접 루프로 변경(SERVICE §7). 테스트 25개 추가, 전체 296개 통과 | `prompts/` 4종 |
+| 2026-11-05 | Phase 3: `prompts/` 4종 | survey(한국어 보기 6~10개), interviewer(영어 질문 1개, 배정 주제·레벨 후보 유형), scorer(1~5 절대 척도 앵커 = 등급 구간, 영어 부분만, 주제 이탈 task 1, 인젝션 무시), feedback(교정 이유 한국어·문장 영어, 대체 문장은 한 단계 위, 한글 부분 번역한 전체 답변) 모두 v1. 로더 `load_prompt`(머리말·[system]/[user]·`${}` 변수), `wrap_answer`(태그 무력화). SERVICE §2·§3·§13 반영. 테스트 23개 추가, 전체 319개 통과 | `agents/` 4종 |
