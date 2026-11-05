@@ -34,7 +34,7 @@
 
 ### Phase 2.5. 채점 평가 세트 (SERVICE §14.2, Phase 3 scorer 착수 전)
 - [x] `evals/scorer/golden.jsonl` 초안 작성: 30~50건, 레벨별 분포 + 경계 사례(한글 혼합·전부 한글·지시문·주제 이탈·짧은 답변). 각 건에 질문, 출제 레벨, 제안 기대 등급
-- [ ] **사용자 검수**: 기대 등급 확인·수정 (검수 완료 전 Phase 3 scorer 프롬프트 확정 금지)
+- [x] **사용자 검수**: 기대 등급 확인·수정 (검수 완료 전 Phase 3 scorer 프롬프트 확정 금지)
 - [ ] `evals/run_scorer_eval.py` 작성 (지표는 파이썬으로 계산, 결과는 `evals/results/`에 프롬프트 버전별 저장)
 
 ### Phase 3. LLM·에이전트
@@ -86,3 +86,4 @@
 | 2026-11-05 | Phase 2: `tools/survey.py` | `parse_survey`(첫 ": " 분리, [프로필] → profile, ★ → recommend 최대 3, 여러 줄 안내문, 주석·제목 무시, 빈·중복 보기 제거, id `{주제}-{순번}`), `load_survey_file`(없음·읽기 실패·topic 0개 → None), `pick_default_topic`(rng 주입). 실제 opic_survey.md 8문항 파싱 확인. SERVICE §2·§10 반영. 테스트 20개 추가, 전체 223개 통과 | `tools/level.py` + `storage.py` |
 | 2026-11-05 | Phase 2: `tools/level.py` + `storage.py` (Phase 2 완료) | level: 레벨별 유형·guide 조회(order 검증, 사본 반환), 완료 문항 기반 이전 질문 목록. storage: 완료 세션만 저장(5문항+요약), 진행용 필드 제외, 임시 파일 후 교체, session_id 경로 조작 차단, 최신순 목록·깨진 파일 건너뜀. 공용 `tests/fixtures/sessions.py`. SERVICE §2 반영. 테스트 31개 추가, 전체 254개 통과 | Phase 2.5 채점 평가 세트 초안 |
 | 2026-11-05 | Phase 2.5: golden.jsonl 초안 | 36건(기대 등급 IL 미달 6·IL 8·IM 8·IH 7·AL 7, 경계 사례 korean_mixed 4·korean_full 2·injection 3·off_topic 2·short 2·cap 3). `build_golden.py`(원본·생성기, 한글 비율·감점 자동 계산), 검수용 `REVIEW.md`, injection은 clean_answer 포함, `reviewed: false`. 일관성 검사 `tests/test_golden_set.py`. SERVICE §9·§14.2 반영. 전체 262개 통과 | **사용자 검수** (REVIEW.md) |
+| 2026-11-05 | Phase 2.5: 사용자 검수 | 36건 제안 등급 그대로 확정, `reviewed: true`로 재생성 | `evals/run_scorer_eval.py` |

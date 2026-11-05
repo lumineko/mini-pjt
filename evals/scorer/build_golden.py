@@ -17,7 +17,7 @@ from opic.rules.scoring import grade_cap, is_korean_fail, korean_penalty, load_r
 from opic.tools.korean import detect_korean  # noqa: E402
 
 OUT_DIR = Path(__file__).resolve().parent
-REVIEWED = False  # 사용자 검수 완료 시 True
+REVIEWED = True  # 사용자 검수 완료 (2026-11-05, 제안 등급 그대로 확정)
 
 # ── 질문 ───────────────────────────────────────────────────────────
 Q_MOVIE_IL = "What kind of movies do you like to watch?"
