@@ -39,18 +39,18 @@
 
 ### Phase 3. LLM·에이전트
 - [ ] `llm.py` Bedrock 클라이언트 + 용도별 모델 매핑 + 재시도·폴백 + 트레이스 메타데이터 전달 + pre/post 훅 자리 (SERVICE §13) + `tests/test_llm_fallback.py`
-- [ ] `prompts/` 5종 (id/version 헤더 포함)
+- [ ] `prompts/` 4종 survey, interviewer, scorer, feedback (id/version 헤더 포함)
 - [ ] `agents/` survey, interviewer, scorer, feedback + 가짜 LLM 테스트 (`tests/test_agents.py`)
 - [ ] scorer 평가 실행 → 목표 지표 달성까지 `prompts/scorer.md`·`rubric.json` 조정 (SERVICE §14.2)
 
 ### Phase 4. 그래프
-- [ ] `supervisor.py` guard_router + supervisor + 검증 + `tests/test_guard.py`
-- [ ] `graph.py` 조립, HITL interrupt, `start_session`/`resume`/`get_state`
-- [ ] `tests/test_graph_flow.py` (fake LLM으로 5문항, 3문항 점검, 조정 흐름)
+- [ ] `routing.py` 분기 함수 5개 (SERVICE §3) + `tests/test_routing.py`
+- [ ] `graph.py` 고정 엣지·조건 분기 조립, `record_item` 노드, HITL interrupt, `start_session`/`resume`/`get_state`
+- [ ] `tests/test_graph_flow.py` (fake LLM으로 5문항, 문항 안 순서 scorer → score_and_grade → feedback, 3문항 점검, 조정 흐름)
 
 ### Phase 5. UI·마무리
 - [ ] `app.py` Streamlit (설문, 레벨, 문항·피드백, 조정 확인, 요약, 기록)
-- [ ] 실제 Bedrock으로 E2E 확인 (PRD 성공 기준 1~9)
+- [ ] 실제 Bedrock으로 E2E 확인 (PRD 성공 기준 1~10)
 - [ ] CLAUDE.md 실행·테스트 명령 갱신
 
 ### Phase 6. 트레이스·가드레일 (SERVICE §13)
@@ -74,3 +74,4 @@
 | 2026-11-04 | 테스트·평가 전략 반영 | SERVICE §14(태스크별 pytest, scorer 평가 세트·지표), 디렉터리 구조에 evals/ 추가, TASK Phase 2.5 신설·Phase 3 테스트 보강 | Phase 1 스캐폴딩 |
 | 2026-11-04 | 4개 문서 통합 재검토 | 대체 설문 직업·거주지는 topic으로 처리, scorer는 영어 부분만 평가(이중 감점 방지), 질문 유형은 LLM이 레벨 후보 안에서 선택, PRD 성공 기준 10(채점 품질) 추가, .gitignore·누락 테스트·Python 버전·pydantic 명시, CLAUDE.md 문서 구조 보강 | Phase 1 스캐폴딩 |
 | 2026-11-04 | Phase 1: 디렉터리 구조 + .gitignore + requirements.txt | src/opic 패키지 골격, data·logs·tests·evals 폴더, .gitignore, pytest.ini, requirements(~= 고정). Python 3.14 venv 설치 성공, tests/test_smoke.py 5개 통과 | `.env.example` + `config.py` |
+| 2026-11-05 | 슈퍼바이저 제거 (개발 시간 단축) | 고정 순서 워크플로로 변경: 문항 안 순서 scorer → score_and_grade → feedback(등급 참고) → record_item, 분기는 `routing.py` 파이썬 함수 5개. PRD §6, SERVICE §1~3·5·7·9·11~14, CLAUDE.md 동기화, 프롬프트 4종 | `.env.example` + `config.py` |

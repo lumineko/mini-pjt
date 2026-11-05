@@ -26,7 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 평가(`evals/`)는 실제 Bedrock을 호출하므로 pytest와 별도로 수동 실행한다.
 
 예정 구조 (상세는 SERVICE.md §2, §9):
-- `src/opic/` — `app.py`(Streamlit), `graph.py`, `supervisor.py`(LLM 슈퍼바이저 + Python guard), `agents/`, `tools/`, `rules/`(순수 함수 판정 로직), `llm.py`(Bedrock 폴백)
+- `src/opic/` — `app.py`(Streamlit), `graph.py`(고정 순서 워크플로), `routing.py`(Python 분기 함수, 슈퍼바이저 없음), `agents/`, `tools/`, `rules/`(순수 함수 판정 로직), `llm.py`(Bedrock 폴백)
 - `data/` — `levels.json`, `rubric.json`, `default_topics.json`, `history/`(세션 JSON)
 - 판정 로직(`rules/`)은 LLM 없이 단위 테스트 가능해야 한다.
 - `.env`, `data/history/`, `logs/`, `evals/results/`는 커밋하지 않는다(`.gitignore`).

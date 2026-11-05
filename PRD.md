@@ -61,7 +61,8 @@
 - **안정성**: Bedrock 모델 폴백으로 연습이 중단되지 않는다. 기본 모델 `global.anthropic.claude-sonnet-4-5-20250929-v1:0`, 폴백 `global.anthropic.claude-haiku-4-5-20251001-v1:0` (SERVICE.md §7).
 - **보안**: API 키·자격 증명은 `.env`에서 읽는다.
 - **언어**: 피드백 설명은 한국어, 교정/대체/번역 문장은 영어.
-- **스택**: Python(로컬 3.14, 의존성 비호환 시 3.12 가상환경), LangGraph(멀티 에이전트: LLM 슈퍼바이저 + 파이썬 가드레일), Bedrock, Streamlit. 승인된 라이브러리(2026-11-04): streamlit, langgraph, langchain-aws, python-dotenv, pytest. pydantic은 langchain-core 의존성으로 함께 설치되며 구조화 출력 검증에 직접 사용한다.
+- **처리 순서**: 한 문항은 항상 같은 순서로 진행한다: 질문 생성 → 답변 → Scorer(루브릭 점수) → 파이썬 등급·감점·상한 판정 → Feedback(교정, 대체 문장, 번역). Feedback은 판정된 등급을 입력으로 받는다. 3문항 후 난이도 점검과 5문항 종료는 파이썬 조건 분기로만 결정한다 (LLM이 다음 단계를 고르지 않음).
+- **스택**: Python(로컬 3.14, 의존성 비호환 시 3.12 가상환경), LangGraph(고정 순서 워크플로: LLM 에이전트 4종(Survey·Interviewer·Scorer·Feedback) + 파이썬 조건 분기, 슈퍼바이저 없음), Bedrock, Streamlit. 승인된 라이브러리(2026-11-04): streamlit, langgraph, langchain-aws, python-dotenv, pytest. pydantic은 langchain-core 의존성으로 함께 설치되며 구조화 출력 검증에 직접 사용한다.
 
 ## 7. 범위
 ### In Scope
