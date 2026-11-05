@@ -95,7 +95,8 @@ copy .env.example .env
 # 4) 테스트 (실제 LLM 호출 없음, 키 불필요)
 .venv\Scripts\python -m pytest -q
 
-# 5) 평가 (실제 Bedrock 호출, 비용 발생, 결과는 evals/results/)
+# 5) 평가 (실제 Bedrock 호출, 비용 발생)
+.venv\Scripts\python evaluation\run_test_queries.py --label round2   # 인-아웃 세트 20건 → evaluation/results/
 .venv\Scripts\python evals\run_scorer_eval.py      # 채점 평가 (골든 세트 36건)
 .venv\Scripts\python evals\run_e2e.py              # 화면 경로 E2E (5문항 세션·폴백·대체 설문)
 ```
@@ -118,13 +119,13 @@ copy .env.example .env
 **자동 테스트** (pytest, 가짜 LLM): **524개 통과**
 
 ## 인-아웃 세트 통과율 (자체 평가)
-골든 세트 36건(입력: 질문·출제 레벨·답변 → 기대 출력: 최종 등급)의 정확 일치 기준이다.
-- 1차 (scorer 프롬프트 v1): **22 / 36** 통과 (61.1%)
-- 2차 (scorer 프롬프트 v2 개선 후): **30 / 36** 통과 (83.3%)
-- 개선폭: **+8건**
-  - 주요 개선 사항: 5점은 '고급 기능'이 보일 때만 주고, 오류가 없는 것만으로는 4점, 단순한 문장은 3점으로 기준(앵커)을 명시했다. 항목마다 따로 판단하게 했다.
-  - 결과: IH 수준 답변을 AL로 주던 과대 채점 6건과 주제 이탈 답변을 IM으로 주던 2건이 해소됐다. 일관성도 0.044 → 0.000으로 좋아졌다.
-- 참고 (리전 변경 후 재측정, 같은 v2): **31 / 36** (86.1%). 남은 5건은 모두 기대 등급과 한 단계 차이인 경계 사례다.
+[`evaluation/test_queries.csv`](evaluation/test_queries.csv) 20건(positive 8 · negative 4 · edge 5 · guardrail 3)을 [`evaluation/run_test_queries.py`](evaluation/run_test_queries.py)로 실제 Bedrock에서 돌렸다. 판정은 파이썬 규칙으로 했다. 두 라운드 모두 같은 세트·같은 판정·같은 리전이고, 코드 시점만 다르다.
+- 1차 (Phase 5 완료 시점 `28a2725`, 가드레일 이전): **15 / 20** 통과 — [round1_report.md](evaluation/round1_report.md)
+- 2차 (Phase 6 개선 후, 현재 코드): **19 / 20** 통과 — [round2_report.md](evaluation/round2_report.md)
+- 개선폭: **+4건**
+  - 주요 개선 사항: 입력 가드레일 추가. 개인정보 가림(18번 전화·이메일, 15번 오탐 없음)과 인젝션 표시(19번 영어, 20번 한국어)로 guardrail 0/3 → 3/3.
+  - 남은 실패 1건(11번): 주제 이탈 답변이 Sonnet 채점에서 가중 2.8 = IM 경계에 걸린다. 과제 수행 1점만으로는 등급이 충분히 내려가지 않는 루브릭 한계다(두 라운드 공통).
+- 참고, 채점 골든 세트 36건(`evals/`, 정확 일치): scorer@1 **22/36** → scorer@2 **30/36** (+8). 점수 앵커를 명시해 IH→AL 과대 채점 6건과 주제 이탈 2건이 해소됐다. 새 리전 재측정은 31/36.
 
 ## 트라이앤에러 회고
 **시도했지만 실패한 접근 · 왜 실패했는가**
@@ -153,6 +154,8 @@ copy .env.example .env
 - **리전을 ap-northeast-2로 변경:** Sonnet이 폴백 없이 호출되는 것을 E2E와 채점 평가로 다시 확인했다.
 
 **남은 한계 · 향후 개선 방향**
+- 주제 이탈 답변이 IM으로 나오는 경우(인-아웃 11번): 사용자 결정으로 판정 규칙을 추가하지 않고 알려진 한계로 둔다. 필요해지면 "과제 수행 1점이면 등급 상한" 같은 파이썬 규칙이나 scorer 앵커 보강이 후보다.
+- 이 리전은 Sonnet 분당 한도가 낮아 연속 호출 때 Haiku 폴백이 잦다. 모델에 따라 경계 점수가 달라질 수 있다(11번: Sonnet IM, Haiku IL). 할당량을 늘리거나 호출 간격을 조절한다.
 - 채점 경계 사례 5건(IM↔IH 등 한 단계 차이): 경계 근처 예시를 골든 세트에 더 넣고 앵커를 다듬는다.
 - interviewer·feedback 품질은 E2E와 가드레일로만 확인했다. `evals/interviewer`, `evals/feedback` 평가 세트를 추가한다.
 - 주제 키워드 검사는 모델이 스스로 고른 단어라 검사 강도가 약하다. 필요하면 가벼운 LLM 판정을 덧붙인다(비용 검토).
@@ -177,4 +180,5 @@ copy .env.example .env
 - `src/opic/app.py:284` — Streamlit 화면 `main`
 - `src/opic/prompts/*.md` — 프롬프트 4종 (`id`/`version` 머리말)
 - `data/rubric.json`, `data/levels.json` — 루브릭·등급 구간·감점, 레벨별 질문 유형·지침
-- `evals/scorer/golden.jsonl`, `evals/run_scorer_eval.py`, `evals/run_e2e.py` — 평가 세트·채점 평가·E2E
+- `evaluation/test_queries.csv`, `evaluation/run_test_queries.py`, `evaluation/round1_report.md`, `evaluation/round2_report.md` — 인-아웃 세트·자동 판정·1차/2차 보고서
+- `evals/scorer/golden.jsonl`, `evals/run_scorer_eval.py`, `evals/run_e2e.py` — 채점 골든 세트·채점 평가·E2E

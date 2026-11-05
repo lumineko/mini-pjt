@@ -29,6 +29,7 @@ Phase 0~6 구현 완료(트레이스·로컬 가드레일 포함). 남은 백로
   - 채점 평가: `.venv\Scripts\python evals\run_scorer_eval.py` (키 없이 흐름만 확인: `--fake`, 일부만: `--only s001,s013`)
   - 평가 세트 재생성(검수 반영 후): `.venv\Scripts\python evals\scorer\build_golden.py`
   - 화면 경로 E2E(5문항 세션·폴백·대체 설문): `.venv\Scripts\python evals\run_e2e.py`
+  - 인-아웃 세트(산출물, `evaluation/test_queries.csv` 20건): `.venv\Scripts\python evaluation\run_test_queries.py --label round2` (다른 시점 코드: `git worktree add <폴더> <커밋>` 후 `--src <폴더>\src`). 결과 `evaluation/results/`(커밋 포함), 보고서 `round1_report.md`·`round2_report.md`
 
 # 코드 구조 (상세는 SERVICE.md §2, §3, §9)
 흐름: `app.py`(Streamlit) → `graph.py` API(`start_session`/`resume`/`retry`) → LangGraph 고정 순서 워크플로.

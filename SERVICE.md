@@ -289,6 +289,12 @@ mini-pjt/
 │  ├─ test_graph.py          # 노드·입력 처리 함수·API 단위 테스트
 │  ├─ test_graph_flow.py     # LLM을 fake로 바꿔 5문항, 3문항 점검(수락/거절/경계), 피드백 단계 흐름 검증
 │  └─ test_app.py            # Streamlit AppTest(streamlit 내장) + fake LLM으로 화면 조작 검증
+├─ evaluation/               # 인-아웃 세트 산출물 (실제 Bedrock, 수동 실행)
+│  ├─ test_queries.csv       # 20건: id, category(positive/negative/edge/guardrail), input, expected_traits, forbidden, expected_tools, note
+│  ├─ run_test_queries.py    # 자동 판정(파이썬 규칙), --src로 다른 시점 코드 실행, 케이스별 답한 모델 기록
+│  ├─ round1_report.md       # 1차: 28a2725(가드레일 이전) 15/20
+│  ├─ round2_report.md       # 2차: 현재 코드 19/20
+│  └─ results/               # round1.json, round2.json
 └─ evals/                    # 실제 Bedrock 호출, 수동 실행 (비용 발생)
    ├─ scorer/golden.jsonl    # 기대 등급이 붙은 평가 세트 (사용자 검수)
    ├─ scorer/build_golden.py # 평가 세트 원본 + golden.jsonl·REVIEW.md 생성
