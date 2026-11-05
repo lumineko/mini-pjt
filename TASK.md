@@ -24,7 +24,7 @@
 ### Phase 2. 규칙·도구 (Python, 테스트 우선)
 - [x] `rules/scoring.py` + `tests/test_scoring.py` (가중 합산, 한글 감점, 등급, IL 미달)
 - [x] `tools/korean.py` + `tests/test_korean.py`
-- [ ] `rules/difficulty.py` + `tests/test_difficulty.py` (AL/IL 경계 포함)
+- [x] `rules/difficulty.py` + `tests/test_difficulty.py` (AL/IL 경계 포함)
 - [ ] `rules/topic.py` + `tests/test_topic.py`, `rules/validation.py` + `tests/test_validation.py`
 - [ ] `rules/summary.py` + `tests/test_summary.py`
 - [ ] `tools/survey.py` + `tests/test_survey.py` (파싱, [프로필]/★/안내문 처리, fallback 조건)
@@ -80,3 +80,4 @@
 | 2026-11-05 | Phase 1: `state.py` 타입 정의 | SessionState(SERVICE §3 23개 필드) + 하위 TypedDict(SurveyItem, Pending, Grading, Feedback, ItemResult, SessionSummary 등), Level/Grade 상수(순서값 = 인덱스), `new_session_state()`. 문서 필드·데이터 파일 일치, LangGraph 호환 테스트. 전체 37개 통과 | Phase 2 `rules/scoring.py` |
 | 2026-11-05 | Phase 2: `rules/scoring.py` | 가중 합산(항목·척도 검증), 한글 비례 감점, 80% 이상 IL 미달, 등급 구간(소수 둘째 자리 반올림 후 비교), 출제 레벨+1 상한, 달성 여부, `grade_answer()` 통합, 순서값 평균(.5 올림). SERVICE §10 반영. 테스트 60개 추가, 전체 97개 통과 | `tools/korean.py` (한글 비율 정의 확정 필요) |
 | 2026-11-05 | Phase 2: `tools/korean.py` | 한글 비율 **단어 기준** 확정(한글 들어간 단어/전체 단어, 숫자·문장부호만 있는 덩어리 제외), 최소 단어 수에 한글 단어 포함, 번역 구간 병합 규칙, `count_words` 공용. PRD F-04·F-13, SERVICE §2 반영. 테스트 24개 추가, 전체 121개 통과 | `rules/difficulty.py` |
+| 2026-11-05 | Phase 2: `rules/difficulty.py` | `propose_adjustment`(3문항 평균 등급 vs 목표, 항상 한 단계, AL up·IL down 없음, IL 미달은 down, 정확히 3개 검증), `apply_adjustment`(새 레벨 + LevelChange, 잘못된 제안 거부). SERVICE §2 반영. 테스트 29개 추가, 전체 150개 통과 | `rules/topic.py` + `rules/validation.py` |
