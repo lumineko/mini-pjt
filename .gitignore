@@ -27,3 +27,7 @@ venv/
 Thumbs.db
 .vscode/
 .idea/
+
+# 로컬 산출물 (제출용 합본, 그래프 이미지)
+PRD_SERVICE.md
+graph.png
