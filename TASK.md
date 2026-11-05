@@ -22,7 +22,7 @@
 - [x] `state.py` 타입 정의 + `tests/test_state.py`
 
 ### Phase 2. 규칙·도구 (Python, 테스트 우선)
-- [ ] `rules/scoring.py` + `tests/test_scoring.py` (가중 합산, 한글 감점, 등급, IL 미달)
+- [x] `rules/scoring.py` + `tests/test_scoring.py` (가중 합산, 한글 감점, 등급, IL 미달)
 - [ ] `tools/korean.py` + `tests/test_korean.py`
 - [ ] `rules/difficulty.py` + `tests/test_difficulty.py` (AL/IL 경계 포함)
 - [ ] `rules/topic.py` + `tests/test_topic.py`, `rules/validation.py` + `tests/test_validation.py`
@@ -78,3 +78,4 @@
 | 2026-11-05 | Phase 1: `.env.example` + `config.py` | 인증은 액세스 키/프로필 둘 다 지원(둘 중 하나), 키 없어도 로드 가능(`has_credentials`로 확인), 빈 값은 기본값, 상대 경로는 루트 기준, 환경변수가 .env보다 우선, `setup_logging`(콘솔+logs/app.log, 중복 방지). 테스트 13개 추가, 전체 18개 통과 | 데이터 초안 (default_topics, levels, rubric) |
 | 2026-11-05 | Phase 1: 데이터 초안 | default_topics 6개, levels.json 누적형 질문 유형 + 레벨별 guide 초안(사용자 검토 대상), rubric.json SERVICE §10 수치 + 항목 description. SERVICE §10 동기화. 형식 검사 테스트 추가 | `state.py` 타입 정의 |
 | 2026-11-05 | Phase 1: `state.py` 타입 정의 | SessionState(SERVICE §3 23개 필드) + 하위 TypedDict(SurveyItem, Pending, Grading, Feedback, ItemResult, SessionSummary 등), Level/Grade 상수(순서값 = 인덱스), `new_session_state()`. 문서 필드·데이터 파일 일치, LangGraph 호환 테스트. 전체 37개 통과 | Phase 2 `rules/scoring.py` |
+| 2026-11-05 | Phase 2: `rules/scoring.py` | 가중 합산(항목·척도 검증), 한글 비례 감점, 80% 이상 IL 미달, 등급 구간(소수 둘째 자리 반올림 후 비교), 출제 레벨+1 상한, 달성 여부, `grade_answer()` 통합, 순서값 평균(.5 올림). SERVICE §10 반영. 테스트 60개 추가, 전체 97개 통과 | `tools/korean.py` (한글 비율 정의 확정 필요) |
