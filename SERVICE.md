@@ -185,7 +185,7 @@ HTTP API는 없다. Streamlit이 같은 프로세스 안에서 함수를 호출�
 
 interrupt 값(payload)의 키 (`kind` 공통):
 - `survey`: `notice`, `source`, `items`, `levels`, `error`
-- `answer`: `item_index`(1부터), `total`(5), `level`, `question`, `question_type`, `min_words`, `error`
+- `answer`: `item_index`(1부터), `total`(5), `level`, `topic`, `question`, `question_type`, `min_words`, `error`
 - `feedback`: `item_index`, `total`, `item`(ItemResult), `is_last`
 - `adjust`: `average_grade`, `current_level`, `proposal`
 - 세션이 끝나면 API는 `{"kind": "done", "session_id", "summary"}`를 돌려준다.

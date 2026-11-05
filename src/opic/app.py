@@ -129,7 +129,7 @@ def render_survey(p) -> None:
 
 def render_answer(p) -> None:
     st.subheader(f"문항 {p['item_index']} / {p['total']}")
-    st.caption(f"레벨 {p['level']} · 유형 {p['question_type']}")
+    st.caption(f"레벨 {p['level']} · 주제 {p['topic']} · 유형 {p['question_type']}")
     st.markdown(f"### {p['question']}")
     if p.get("error"):
         st.error(p["error"])

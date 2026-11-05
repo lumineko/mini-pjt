@@ -111,6 +111,7 @@ def await_answer(state: SessionState) -> dict:
         "item_index": len(state["items"]) + 1,
         "total": SESSION_ITEMS,
         "level": state["current_level"],
+        "topic": state["topic_plan"][len(state["items"])],
         "question": state["current_question"],
         "question_type": state["current_question_type"],
         "min_words": min_words,

@@ -50,7 +50,7 @@
 
 ### Phase 5. UI·마무리
 - [x] `app.py` Streamlit (설문, 레벨, 문항·피드백, 조정 확인, 요약, 기록)
-- [ ] 실제 Bedrock으로 E2E 확인 (PRD 성공 기준 1~10)
+- [x] 실제 Bedrock으로 E2E 확인 (PRD 성공 기준 1~10) — `evals/run_e2e.py`, 13/13 통과
 - [ ] CLAUDE.md 실행·테스트 명령 갱신
 
 ### Phase 6. 트레이스·가드레일 (SERVICE §13)
@@ -97,3 +97,4 @@
 | 2026-11-05 | Phase 4: `graph.py` | 노드 14개·고정 엣지 10개·조건 분기 5개 조립(슈퍼바이저 없음). HITL 4종 interrupt(재개 시 노드 재실행되므로 입력 처리는 순수 함수 `apply_*`로 분리), 파이썬 노드(score_and_grade, record_item, check_difficulty, apply_level, summarize, save_session). API `start_session`/`resume`/`retry`/`get_state`/`current_payload`, 세션 id는 저장 규칙 호환. SERVICE §2·§4(payload 키) 반영. `tests/test_graph.py` 20개 추가, 전체 394개 통과 | `tests/test_graph_flow.py` |
 | 2026-11-05 | Phase 4: `tests/test_graph_flow.py` (Phase 4 완료) | 가짜 LLM으로 5문항 세션 끝까지: payload 순서, LLM 호출 순서(interviewer→scorer→feedback 고정), 피드백에 파이썬 등급 전달, 주제 배정 반영, 조정 상향 수락(4·5번 새 레벨·상한)·거절·하향·AL/IL/동일 경계·1회만, 짧은 답변 재입력(LLM 호출 없음), 전부 한글 IL 미달+번역, LLM 실패 후 retry 이어서, 미완료 미저장, 세션 분리, fallback 설문. 수정 없이 통과. 18개 추가, 전체 412개 통과 | Phase 5 `app.py` |
 | 2026-11-05 | Phase 5: `app.py` | 사용자 결정: 사이드바 메뉴(연습/지난 기록, 진행 상황, 새 연습 시작). 화면: 설문(profile 라디오·topic 체크박스 3열·★ 표시·안내문·레벨), 문항(UI 선검증), 피드백(등급·달성·상한 안내·루브릭 표·감점·교정 or "교정 사항 없음"·대체 문장·번역), 조정 확인, 결과, 기록 목록·상세. LLM 실패 시 다시 시도. `tests/test_app.py`(Streamlit 내장 AppTest + fake LLM) 9개, 전체 421개 통과. 실제 서버 기동(health ok) 확인 | Bedrock E2E 확인 |
+| 2026-11-05 | Phase 5: 실제 Bedrock E2E | `evals/run_e2e.py`(수동): AppTest로 app.py를 실제 Bedrock과 돌려 5문항 세션 완주(76s, 조정 질문 IM→IH 수락, 4·5번 IH 출제), 폴백(없는 기본 모델 → Haiku 자동 전환), 대체 설문(거주지, 보기 8개). PRD 성공 기준 1~10 + 추가 3개(질문 영어·배정 주제, 언어 규칙, 짧은 답변 화면 차단) **13/13 통과**. 답변 payload에 `topic` 추가(화면 표시, SERVICE §4). 기록은 evals/results/e2e_history(커밋 제외). 참고: 미리 써 둔 답변이 질문 세부와 어긋난 3·4·5번은 task 1~2점으로 낮게 채점됨(채점이 의도대로 동작) | CLAUDE.md 실행·테스트 명령 갱신 |
